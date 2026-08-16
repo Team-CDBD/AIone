@@ -27,6 +27,9 @@ where = ["src"]
 [tool.setuptools]
 py-modules = ["ingest"]
 
+[tool.setuptools.package-data]
+router = ["rules/*.yaml"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]

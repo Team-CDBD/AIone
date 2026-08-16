@@ -32,4 +32,5 @@ def test_graph_plan_reachability():
     except PlanError:return
     assert False,"unreachable plan must fail"
 def test_router_signal_priority():
-    assert score_question("기술 지원 이슈가 가장 많은 제품은?")[0].tool is ToolName.KNOWLEDGE_GRAPH
+    from router.registry import default_signals
+    assert score_question("기술 지원 이슈가 가장 많은 제품은?",signals=default_signals())[0].tool==ToolName.KNOWLEDGE_GRAPH

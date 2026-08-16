@@ -1,3 +1,5 @@
+# 라우팅 튜닝 오버레이. 키워드 신호는 각 모듈의 provider.py(SIGNAL)가 소유하고,
+# 여기서는 코드 수정 없이 조정 가능한 값만 덮어쓴다. weights의 키는 모듈 이름(tool.name).
 tau: 0.55
 delta: 0.15
 weights:
