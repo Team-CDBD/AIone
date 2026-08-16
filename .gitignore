@@ -2,3 +2,12 @@
 /doc/
 /logs/
 /data/
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
