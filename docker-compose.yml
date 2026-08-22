@@ -30,7 +30,7 @@ services:
       PG_DSN: postgresql://mcp_reader:${MCP_READER_PASSWORD}@postgres:5432/companyx
       # 기동돼 있지 않은 컨테이너 이름을 기본값으로 두면 배포본이 조용히 실패한다.
       # 외부 Ollama 주소를 명시적으로 주입하고, 로컬 프로파일에서만 http://ollama:11434로 덮는다.
-      OLLAMA_URL: ${OLLAMA_URL:?OLLAMA_URL must be set (예: http://192.168.159.1:11434)}
+      OLLAMA_URL: "${OLLAMA_URL:?set OLLAMA_URL in .env — see .env.example}"
       GENERATE_MODEL: ${GENERATE_MODEL:-gemma4:e4b}
       EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text:latest}
       TOP_K: ${TOP_K:-5}
