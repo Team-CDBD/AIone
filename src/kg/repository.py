@@ -14,6 +14,19 @@ class KgRepository:
             "SELECT node_id,name,node_type FROM kg_nodes WHERE position(lower(name) in lower(%s)) > 0 ORDER BY length(name) DESC LIMIT %s",
             (text,k),
         )
+    def rank_global(self, relation: str, side: str, neighbor_filter: dict[str, str], limit: int) -> list[dict[str, Any]]:
+        """관계 전체를 그룹핑 노드 기준으로 집계한다. side는 planner가 온톨로지에서 정한 값만 온다."""
+        group, other = ("source_id", "target_id") if side == "source" else ("target_id", "source_id")
+        clauses, params = "", [relation]
+        for key, value in neighbor_filter.items():
+            clauses += " AND m.properties->>%s = %s"; params += [key, value]
+        return self.db.fetch_dicts(
+            f"""SELECT n.node_id,n.name,n.node_type,count(DISTINCT e.{other}) AS connected
+ FROM kg_edges e JOIN kg_nodes n ON n.node_id=e.{group} JOIN kg_nodes m ON m.node_id=e.{other}
+ WHERE e.relation_type=%s{clauses}
+ GROUP BY n.node_id,n.name,n.node_type ORDER BY connected DESC,n.name LIMIT %s""",
+            tuple(params + [limit]),
+        )
     def traverse(self, start_id: str, relations: list[str], target_types: list[str], max_hops: int) -> list[dict[str, Any]]:
         return self.db.fetch_dicts("""WITH RECURSIVE walk(node_id,path,depth) AS (
  SELECT %s::text, ARRAY[%s::text], 0 UNION ALL

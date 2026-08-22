@@ -3,7 +3,7 @@ from typing import Any
 from contracts.resolver import EntityResolver
 from contracts.tool import ToolStatus
 from .domain.ontology import NodeType, Relation
-from .domain.planner import PlanError, aggregate_unit, plan
+from .domain.planner import PlanError, aggregate_unit, global_unit, plan, plan_global
 from .repository import KgRepository
 
 @dataclass(frozen=True)
@@ -11,6 +11,13 @@ class GraphOutcome:
     status: ToolStatus; rows: list[dict[str,Any]]=field(default_factory=list); unit: str="그래프 경로"; query: str=""; candidates: list[str]=field(default_factory=list); reason: str|None=None
 class GraphService:
     def __init__(self, repo: KgRepository, resolver: EntityResolver): self.repo,self.resolver=repo,resolver
+    def aggregate(self,relation:str,target_type:str,aggregate:str|None=None,neighbor_filter:dict[str,str]|None=None,limit:int=10)->GraphOutcome:
+        """시작 개체가 없는 전역 집계 — '가장 많은 …', '진행 중인 …를 이끄는 …' 류를 처리한다."""
+        try: planned=plan_global(relation,target_type,aggregate,neighbor_filter,limit)
+        except (PlanError,ValueError) as exc: return GraphOutcome(ToolStatus.GUARD_REJECTED,reason=str(exc))
+        rows=self.repo.rank_global(planned.relation.value,planned.side,planned.neighbor_filter,planned.limit)
+        query=f"scope=global; relation={planned.relation.value}; group={planned.target_type.value}; filter={planned.neighbor_filter or '{}'}; limit={planned.limit}"
+        return GraphOutcome(ToolStatus.OK if rows else ToolStatus.EMPTY,rows,global_unit(planned.relation,planned.target_type),query)
     def traverse(self,start_entity:str,relations:list[str],target_types:list[str],max_hops:int,aggregate:str|None=None)->GraphOutcome:
         resolved=self.resolver.resolve(start_entity)
         if resolved.node_id is None: return GraphOutcome(ToolStatus.ENTITY_NOT_FOUND,candidates=resolved.candidates,reason="개체를 찾지 못했습니다")

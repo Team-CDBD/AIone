@@ -31,6 +31,16 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 RUN pip install --no-cache-dir .
 
+# 원격에서 배포본을 그 자리에서 검증할 수 있어야 한다 — 호스트 bind-mount 없이
+# `docker compose run --rm mcp python tests/mcp_e2e.py`가 그대로 돈다.
+COPY tests ./tests
+COPY tools ./tools
+
+# 배포된 이미지가 어느 커밋인지 추적할 수 있게 한다(원격에는 git 작업트리가 없다).
+ARG BUILD_SHA=unknown
+ENV BUILD_SHA=${BUILD_SHA}
+LABEL org.opencontainers.image.revision=${BUILD_SHA}
+
 COPY --from=java-build /build/target/graph-runner.jar ./java/graph-runner.jar
 COPY --from=air-build /build/dist ./mcp-air/dist
 COPY --from=air-build /build/node_modules ./mcp-air/node_modules

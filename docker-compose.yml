@@ -14,19 +14,27 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  # 외부 Ollama를 쓰는 배포에서는 이 서비스를 띄우지 않는다(`--profile local-ollama` 미지정).
+  # 그 경우 OLLAMA_URL을 외부 주소로 넘겨야 한다 — 아래 mcp의 기본값 참조.
   ollama:
+    profiles: ["local-ollama"]
     image: ollama/ollama:latest
     ports: ["11434:11434"]
     volumes: ["ollama:/root/.ollama"]
   mcp:
-    build: .
+    build:
+      context: .
+      args:
+        BUILD_SHA: ${BUILD_SHA:-unknown}
     environment:
       PG_DSN: postgresql://mcp_reader:${MCP_READER_PASSWORD}@postgres:5432/companyx
-      OLLAMA_URL: http://ollama:11434
-      GENERATE_MODEL: gemma4:e4b
-      EMBED_MODEL: nomic-embed-text:latest
-      TOP_K: 5
-      TAU: 0.55
+      # 기동돼 있지 않은 컨테이너 이름을 기본값으로 두면 배포본이 조용히 실패한다.
+      # 외부 Ollama 주소를 명시적으로 주입하고, 로컬 프로파일에서만 http://ollama:11434로 덮는다.
+      OLLAMA_URL: ${OLLAMA_URL:?OLLAMA_URL must be set (예: http://192.168.159.1:11434)}
+      GENERATE_MODEL: ${GENERATE_MODEL:-gemma4:e4b}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text:latest}
+      TOP_K: ${TOP_K:-5}
+      TAU: ${TAU:-0.55}
       KG_ENGINE: python  # python|jena|shadow. jena/shadow는 §P2/P3 실연결 전까지 python과 동일하게 동작.
     volumes:
       - ./data:/app/data:ro  # `docker compose run --rm mcp python -m ingest data/....zip`가 -v 없이 바로 되게.

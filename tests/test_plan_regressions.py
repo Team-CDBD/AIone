@@ -8,6 +8,7 @@ from nl2sql.domain.guard import guard
 from nl2sql.domain.normalizer import normalize_korean_enums
 from vector.provider import build_params, infer_doc_type
 from kg.provider import build_params as build_kg_params
+from kg.domain.planner import PlanError, plan_global
 from contracts.resolver import Resolution
 from router.domain.rules import score_question
 from router.registry import default_signals
@@ -49,6 +50,36 @@ def test_product_project_question_builds_two_hop_plan():
     assert params["relations"] == ["USES", "HAS_PROJECT"]
     assert params["target_types"] == ["project"]
     assert params["max_hops"] == 2
+
+
+@pytest.mark.parametrize("question, relation, target, aggregate, neighbor_filter", [
+    ("기술 지원 이슈가 가장 많은 제품은?", "REPORTED_ISSUE", "product", "count", {}),
+    ("가장 많은 고객을 담당하는 직원은?", "MANAGES_ACCOUNT", "employee", "count", {}),
+    ("진행 중인 프로젝트를 이끄는 직원 목록", "LEADS", "employee", None, {"status": "in_progress"}),
+])
+def test_global_questions_build_scoped_aggregate_plan(question, relation, target, aggregate, neighbor_filter):
+    """공식 #26/#28/#30 — 시작 개체 없는 전역 집계 경로."""
+    params = build_kg_params(question, [])
+    assert params["scope"] == "global"
+    assert params["relation"] == relation
+    assert params["target_type"] == target
+    assert params["aggregate"] == aggregate
+    assert params["neighbor_filter"] == neighbor_filter
+
+
+def test_global_plan_rejects_target_that_is_not_an_endpoint():
+    with pytest.raises(PlanError): plan_global("LEADS", "client")
+    with pytest.raises(PlanError): plan_global("MANAGES_ACCOUNT", "employee", aggregate="sum")
+
+
+def test_global_plan_groups_on_the_ontology_side():
+    assert plan_global("MANAGES_ACCOUNT", "employee").side == "source"
+    assert plan_global("REPORTED_ISSUE", "product").side == "target"
+
+
+def test_entity_question_still_uses_traversal_scope():
+    entity = Resolution("client_1", "Client-A", "client", 1.0, "exact")
+    assert "scope" not in build_kg_params("Client-A가 사용 중인 제품은?", [entity])
 
 
 def test_corrected_dataset_contract_is_valid():
