@@ -4,10 +4,14 @@ import re
 
 # products/contracts/employees/sales 컬럼 — src/nl2sql/domain/schema_card.py와 동기화된 부분집합
 SCHEMA_COLUMNS = {
+    "departments": {"id", "name", "head_id"},
     "products": {"id", "name", "category", "price_monthly", "status"},
     "contracts": {"id", "client_id", "product_id", "manager_id", "contract_type", "amount", "status"},
     "employees": {"id", "name", "dept_id", "salary"},
+    "clients": {"id", "name", "industry", "region", "company_size", "registered_at"},
+    "projects": {"id", "name", "client_id", "manager_id", "contract_id", "status", "budget"},
     "sales": {"id", "contract_id", "client_id", "product_id", "amount", "sale_date", "quarter", "category", "region"},
+    "support_tickets": {"id", "client_id", "product_id", "assignee_id", "priority", "status", "created_at", "resolved_at"},
 }
 
 @dataclass(frozen=True)
@@ -37,9 +41,20 @@ _SQL_KEYWORDS = {"select","from","join","where","group","by","order","limit","on
 def check(question: str, sql: str) -> SemanticGuardResult:
     if re.search(r"\bquarter\s*=\s*'\d{4}-q(?:\*|)'", sql, re.IGNORECASE):
         return SemanticGuardResult(False, "의미 오류: 연도 전체를 불완전한 quarter 값으로 필터링할 수 없습니다. 날짜 범위를 사용하세요.")
+    ctx = _SqlContext(sql)
+    if ("고객사" in question and not any(term in question for term in ("몇 개", "개수", "수는"))
+            and any(term in question for term in ("알려", "어디", "가장"))
+            and not ctx.uses_column("clients.name")):
+        return SemanticGuardResult(False, "의미 오류: 표시값 질문은 id 대신 clients.name을 JOIN해 반환해야 합니다.")
+    display_rules = (
+        (("제품별", "제품 목록", "제품은"), "products.name"),
+        (("부서는 어디", "부서 어디", "가장 높은 부서"), "departments.name"),
+    )
+    for terms, column in display_rules:
+        if any(term in question for term in terms) and not ctx.uses_column(column):
+            return SemanticGuardResult(False, f"의미 오류: 표시값 질문은 id 대신 {column}을 JOIN해 반환해야 합니다.")
     matched = [m for m in COLUMN_MAPPINGS if any(alias in question for alias in m.aliases)]
     if not matched: return SemanticGuardResult(True)
-    ctx = _SqlContext(sql)
     for mapping in matched:
         for forbidden in mapping.forbidden_columns:
             if ctx.uses_column(forbidden): return SemanticGuardResult(False, _error(mapping, f"{forbidden}는 해당 용어의 기준 컬럼이 아닙니다."))

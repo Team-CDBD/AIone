@@ -14,13 +14,17 @@ export interface ToolResultEnvelope {
 export class PythonWorker {
   private proc: ChildProcessWithoutNullStreams | null = null;
   private rl: readline.Interface | null = null;
-  private pending = new Map<string, (value: ToolResultEnvelope) => void>();
+  private pending = new Map<string, {
+    resolve: (value: ToolResultEnvelope) => void;
+    reject: (reason: Error) => void;
+    timer: NodeJS.Timeout;
+  }>();
   private restarted = false;
 
   constructor(
     private readonly command: string,
     private readonly args: string[],
-    private readonly timeoutMs = 5000,
+    private readonly timeoutMs = 30000,
   ) {}
 
   private ensureStarted(): ChildProcessWithoutNullStreams {
@@ -29,6 +33,15 @@ export class PythonWorker {
     proc.stderr.on("data", (chunk) => process.stderr.write(`[python-worker] ${chunk}`));
     const rl = readline.createInterface({ input: proc.stdout });
     rl.on("line", (line) => this.onLine(line));
+    proc.once("exit", (code, signal) => {
+      if (this.proc === proc) { this.proc = null; this.rl = null; }
+      const error = new Error(`python-worker exited (code=${code}, signal=${signal})`);
+      for (const entry of this.pending.values()) {
+        clearTimeout(entry.timer);
+        entry.reject(error);
+      }
+      this.pending.clear();
+    });
     this.proc = proc;
     this.rl = rl;
     return proc;
@@ -43,10 +56,12 @@ export class PythonWorker {
       process.stderr.write(`[python-worker] malformed response line ignored\n`);
       return;
     }
-    const resolve = this.pending.get(parsed.requestId);
-    if (resolve) {
+    const entry = this.pending.get(parsed.requestId);
+    if (entry) {
       this.pending.delete(parsed.requestId);
-      resolve(parsed);
+      clearTimeout(entry.timer);
+      this.restarted = false; // a healthy response restores the one-restart budget
+      entry.resolve(parsed);
     }
   }
 
@@ -63,10 +78,7 @@ export class PythonWorker {
         reject(new Error(`python-worker timeout after ${this.timeoutMs}ms`));
       }, this.timeoutMs);
 
-      this.pending.set(requestId, (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      });
+      this.pending.set(requestId, { resolve, reject, timer });
 
       proc.stdin.write(line, (err) => {
         if (err) {
@@ -88,7 +100,16 @@ export class PythonWorker {
   }
 
   close(): void {
+    const error = new Error("python-worker closed");
+    for (const entry of this.pending.values()) {
+      clearTimeout(entry.timer);
+      entry.reject(error);
+    }
+    this.pending.clear();
     this.proc?.stdin.end();
     this.proc?.kill();
+    this.proc = null;
+    this.rl?.close();
+    this.rl = null;
   }
 }

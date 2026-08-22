@@ -1,9 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import json
 import re
 
 ALLOWED_TABLES = {"departments","employees","clients","products","contracts","projects","sales","support_tickets"}
-BANNED = {"insert","update","delete","drop","alter","create","truncate","grant","revoke","copy","vacuum","call","do","merge","pg_read_file","pg_sleep","dblink","lo_import","set","reset"}
+BANNED = {"insert","update","delete","drop","alter","create","truncate","grant","revoke","copy","vacuum","call","do","merge","pg_read_file","pg_sleep","dblink","lo_import","strftime","set","reset"}
 
 @dataclass(frozen=True)
 class GuardResult:
@@ -11,14 +12,32 @@ class GuardResult:
     sql: str | None = None
     reason: str | None = None
 
-def strip_code_fence(raw: str) -> str:
+def extract_sql(raw: str) -> str:
     value = raw.strip()
+    # The preferred model contract is {"sql":"SELECT ..."}.  Refuse other
+    # JSON shapes instead of accidentally treating arbitrary JSON as SQL.
+    if value.startswith("{"):
+        try:
+            payload = json.loads(value)
+        except json.JSONDecodeError:
+            return value
+        if isinstance(payload, dict) and set(payload) == {"sql"} and isinstance(payload["sql"], str):
+            value = payload["sql"].strip()
+        else:
+            return value
+    if "```" in value and value.count("```") != 2: return value
     match = re.fullmatch(r"```(?:sql)?\s*(.*?)\s*```", value, re.I | re.S)
-    return match.group(1).strip() if match else value
+    if match: return match.group(1).strip()
+    # Models often add one short explanation before a fenced query.  Extract
+    # exactly one SQL fence; multiple fences remain rejected by the guard.
+    fences = re.findall(r"```(?:sql)?\s*(.*?)\s*```", value, re.I | re.S)
+    return fences[0].strip() if len(fences) == 1 else value
+
+def strip_code_fence(raw: str) -> str: return extract_sql(raw)
 
 def guard(raw: str, max_rows: int = 100) -> GuardResult:
     if not isinstance(raw, str): return GuardResult(False, reason="SQL 문자열이 아닙니다")
-    sql = strip_code_fence(raw)
+    sql = extract_sql(raw)
     if "--" in sql or "/*" in sql: return GuardResult(False, reason="주석 포함")
     without_trailing = sql.rstrip().removesuffix(";").strip()
     if ";" in without_trailing: return GuardResult(False, reason="단일 SELECT 문만 허용")

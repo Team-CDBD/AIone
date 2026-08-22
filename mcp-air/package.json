@@ -5,7 +5,7 @@
   "description": "AirMCP TypeScript main scaffold — MCP transport/schema/middleware owner. Business logic stays in the Python worker (src/adapters/air_worker.py). Not the production entrypoint yet: python -m adapters.mcp_sdk_server remains main.",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "build": "tsc",

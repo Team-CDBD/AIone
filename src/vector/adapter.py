@@ -6,7 +6,7 @@ class VectorSearchTool:
     name = ToolName.VECTOR_SEARCH
     def __init__(self, service: SearchService): self.service = service
     def input_schema(self) -> dict:
-        return {"type":"object", "properties":{"query":{"type":"string","minLength":1},"doc_type":{"type":["string","null"]},"top_k":{"type":"integer","minimum":1,"maximum":20}}, "required":["query"], "additionalProperties":False}
+        return {"type":"object", "properties":{"query":{"type":"string","minLength":1},"doc_type":{"type":["string","null"],"enum":["incident_report","technical_doc","meeting_note","proposal",None]},"top_k":{"type":"integer","minimum":1,"maximum":20}}, "required":["query"], "additionalProperties":False}
     def health(self) -> bool: return True
     def run(self, **params) -> ToolResult:
         started = time.perf_counter()

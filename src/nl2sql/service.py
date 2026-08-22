@@ -23,7 +23,10 @@ class SqlService:
     def answer(self, question: str, hint_tables: list[str], max_rows: int) -> SqlOutcome:
         prompt = build_prompt(normalize_korean_enums(question), hint_tables)
         for attempt in range(self.MAX_RETRY + 1):
-            try: raw = self.llm.generate(prompt, stop=[";\n\n"], max_tokens=300)
+            # gemma4:e4b may spend roughly 300 tokens on hidden reasoning before
+            # emitting SQL; 300 therefore produced a successful HTTP response
+            # with an empty visible response for complex joins.
+            try: raw = self.llm.generate(prompt, stop=[";\n\n"], max_tokens=800)
             except LlmError as exc: return SqlOutcome(ToolStatus.UPSTREAM_ERROR, reason=str(exc))
             checked = guard(raw, max_rows)
             if not checked.ok:

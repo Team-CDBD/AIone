@@ -11,7 +11,7 @@ import { defineServer, defineTool } from "@airmcp-dev/core";
 import { z } from "zod";
 import { PythonWorker } from "./python-worker.js";
 
-const worker = new PythonWorker("python3", ["-m", "adapters.air_worker"]);
+const worker = new PythonWorker("python3", ["-m", "adapters.air_worker"], 30000);
 
 async function airHandler(tool: string, params: Record<string, unknown>) {
   const envelope = await worker.call(tool, params);
@@ -57,6 +57,9 @@ const server = defineServer({
 });
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.once(signal, () => { worker.close(); process.exit(0); });
+  }
   server.start().catch((err: unknown) => {
     process.stderr.write(`companyx-mcp: fatal ${String(err)}\n`);
     process.exit(1);

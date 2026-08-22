@@ -9,6 +9,11 @@ class KgRepository:
         rows = self.db.fetch_dicts("SELECT node_id, name, node_type FROM kg_nodes WHERE node_id=%s", (node_id,)); return rows[0] if rows else None
     def trigram_top(self, text: str, k: int = 3) -> list[dict[str, Any]]:
         return self.db.fetch_dicts("SELECT node_id,name,node_type,similarity(name,%s) AS sim FROM kg_nodes ORDER BY sim DESC LIMIT %s", (text,k))
+    def names_in_text(self, text: str, k: int = 5) -> list[dict[str, Any]]:
+        return self.db.fetch_dicts(
+            "SELECT node_id,name,node_type FROM kg_nodes WHERE position(lower(name) in lower(%s)) > 0 ORDER BY length(name) DESC LIMIT %s",
+            (text,k),
+        )
     def traverse(self, start_id: str, relations: list[str], target_types: list[str], max_hops: int) -> list[dict[str, Any]]:
         return self.db.fetch_dicts("""WITH RECURSIVE walk(node_id,path,depth) AS (
  SELECT %s::text, ARRAY[%s::text], 0 UNION ALL

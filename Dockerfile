@@ -10,7 +10,7 @@ RUN mvn -q -B dependency:go-offline || true
 COPY java/companyx-ontology/src ./src
 RUN mvn -q -B -DskipTests package
 
-FROM node:18-slim AS air-build
+FROM node:20-slim AS air-build
 WORKDIR /build
 COPY mcp-air/package.json mcp-air/package-lock.json* ./
 RUN npm ci

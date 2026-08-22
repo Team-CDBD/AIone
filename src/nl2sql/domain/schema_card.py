@@ -9,4 +9,5 @@ support_tickets(id, client_id, product_id, assignee_id, priority, status, create
 
 값: category=cloud|security|data|consulting; region=서울|경기|부산|대전|대구|인천|광주|제주
 미해결 티켓은 status IN ('open','in_progress'). sales.region/category/quarter는 직접 필터한다.
+PostgreSQL 문법만 사용한다. SQLite 함수 STRFTIME은 금지하며 날짜 처리는 EXTRACT 또는 DATE_TRUNC를 사용한다.
 단일 SELECT만 출력하고 설명, 주석, 마크다운을 쓰지 않는다."""

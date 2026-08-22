@@ -26,8 +26,14 @@ MAX_HOPS = 2
 def build_params(question: str, entities: Sequence[Resolution]) -> dict[str, Any]:
     start = next((e.name for e in entities if e.name), question)
     relations = [rel for keyword, rel in RELATION_BY_KEYWORD.items() if keyword in question] or list(DEFAULT_RELATIONS)
-    targets = ["project"] if "프로젝트" in question else []
-    return {"start_entity": start, "relations": relations, "target_types": targets, "max_hops": MAX_HOPS}
+    if "Product-" in question and "프로젝트" in question: relations = ["USES", "HAS_PROJECT"]
+    if "프로젝트" in question: targets = ["project"]
+    elif "고객사" in question or "고객" in question: targets = ["client"]
+    elif "제품" in question: targets = ["product"]
+    elif "직원" in question or "팀장" in question or "엔지니어" in question: targets = ["employee"]
+    else: targets = []
+    hops = 2 if len(relations) > 1 else 1
+    return {"start_entity": start, "relations": relations, "target_types": targets, "max_hops": hops}
 
 
 def provide(db: Any, llm: Any, cfg: Any) -> ModuleSpec:

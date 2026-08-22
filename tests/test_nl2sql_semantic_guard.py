@@ -26,6 +26,9 @@ def test_용어가_없는_질문은_무조건_통과():
     result = check("고객 목록을 보여줘", "SELECT id, name FROM clients")
     assert result.ok
 
+def test_고객사_count는_name_join을_요구하지_않음():
+    assert check("2024년에 등록된 고객사는 몇 개야?", "SELECT COUNT(id) FROM clients").ok
+
 # --- 부정 오라클: 규칙별로 하나씩 ---
 
 def test_매출_질문에_계약금액_컬럼_쓰면_거부():
@@ -51,6 +54,14 @@ def test_불완전한_분기값_필터는_거부():
 def test_기준_컬럼이_전혀_없으면_거부():
     result = check("올해 매출액은 얼마야?", "SELECT COUNT(*) FROM clients")
     assert not result.ok
+
+def test_제품별_질문은_제품명_join을_요구():
+    assert not check("제품별 총 계약 금액", "SELECT product_id, SUM(amount) FROM contracts GROUP BY product_id").ok
+    assert check("제품별 총 계약 금액", "SELECT p.name, SUM(c.amount) FROM contracts c JOIN products p ON p.id=c.product_id GROUP BY p.name").ok
+
+def test_최고_연봉_부서는_부서명을_요구():
+    assert not check("평균 연봉이 가장 높은 부서는 어디야?", "SELECT dept_id, AVG(salary) FROM employees GROUP BY dept_id").ok
+    assert check("평균 연봉이 가장 높은 부서는 어디야?", "SELECT d.name, AVG(e.salary) FROM employees e JOIN departments d ON d.id=e.dept_id GROUP BY d.name").ok
 
 # --- SqlService 통합: 의미 오류 거부 시 append_correction 재시도 경로를 탄다 ---
 

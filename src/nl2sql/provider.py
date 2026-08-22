@@ -12,7 +12,7 @@ SIGNAL = SignalSpec(
     tool=ToolName.NL2SQL,
     weight=3.0,
     keywords=("총","합계","평균","개수","몇 개","얼마","상위","순서로","가장 높은","가장 많은","진행 중인","매출","계약","연봉","티켓"),
-    pattern=r"20\d{2}년|\d분기|20\d{2}-Q\d",
+    pattern=r"20\d{2}년|\d분기|20\d{2}-Q\d|(?:직원.*목록.*연봉|목록.*직원.*연봉)",
     pattern_bonus=3.0,
     pattern_label="기간",
 )
