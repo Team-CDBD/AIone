@@ -4,6 +4,7 @@ from contracts.tool import ToolStatus
 from .domain.guard import extract_limit, guard, infer_unit
 from .domain.normalizer import normalize_korean_enums
 from .domain.prompt import append_correction, build_prompt
+from .domain.semantic_guard import check as semantic_check
 from .repository import SqlRepository
 
 @dataclass(frozen=True)
@@ -29,6 +30,11 @@ class SqlService:
                 if attempt < self.MAX_RETRY:
                     prompt = append_correction(prompt, raw, checked.reason or "guard rejected"); continue
                 return SqlOutcome(ToolStatus.GUARD_REJECTED, reason=checked.reason)
+            semantic = semantic_check(question, checked.sql or "")
+            if not semantic.ok:
+                if attempt < self.MAX_RETRY:
+                    prompt = append_correction(prompt, checked.sql or "", semantic.reason or "semantic guard rejected"); continue
+                return SqlOutcome(ToolStatus.GUARD_REJECTED, sql=checked.sql or "", reason=semantic.reason)
             try: rows, columns = self.repo.execute(checked.sql or "")
             except DbTimeout: return SqlOutcome(ToolStatus.TIMEOUT, sql=checked.sql or "")
             except (DbQueryError, DbUnavailable) as exc:

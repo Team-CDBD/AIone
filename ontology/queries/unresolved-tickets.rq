@@ -1,0 +1,16 @@
+PREFIX cx: <https://company-x.example/ontology/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?ticket ?ticketId ?title ?ticketStatus ?priority ?product ?productName
+WHERE {
+  ?ticket a cx:SupportTicket ;
+          cx:recordId ?ticketId ;
+          cx:ticketClient ?client ;
+          cx:ticketProduct ?product ;
+          rdfs:label ?title ;
+          cx:status ?ticketStatus ;
+          cx:priority ?priority .
+  ?product rdfs:label ?productName .
+  FILTER (?ticketStatus IN ("open", "in_progress"))
+}
+ORDER BY ?ticketId

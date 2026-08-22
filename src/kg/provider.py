@@ -33,6 +33,12 @@ def build_params(question: str, entities: Sequence[Resolution]) -> dict[str, Any
 def provide(db: Any, llm: Any, cfg: Any) -> ModuleSpec:
     repo = KgRepository(db)
     resolver = KgEntityResolver(repo)
+    engine = getattr(cfg, "KG_ENGINE", "python")
+    # engine=="jena"/"shadow"는 이번 라운드 스코프 밖(§P3 실연결 미구현) — client.py는 배선만 되어 있고
+    # 항상 Python traversal로 조립한다. 실제 분기는 JenaGraphClient가 typed traversal을 반환하게 되는
+    # 다음 라운드에서 GraphService에 연결한다.
+    if engine in ("jena", "shadow"):
+        pass
     return ModuleSpec(
         tool=KnowledgeGraphTool(GraphService(repo, resolver)),
         signal=SIGNAL, build_params=build_params,

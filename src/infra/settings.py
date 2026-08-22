@@ -8,6 +8,7 @@ class Settings:
     OLLAMA_URL:str="http://localhost:11434"
     GENERATE_MODEL:str="gemma4:e4b"
     EMBED_MODEL:str="nomic-embed-text:latest"
+    KG_ENGINE:str="python"  # python|jena|shadow. 이번 라운드는 python 고정 운영, jena는 배선만.
     @classmethod
     def from_env(cls):
         return cls(
@@ -17,4 +18,5 @@ class Settings:
             OLLAMA_URL=os.getenv("OLLAMA_URL",cls.OLLAMA_URL),
             GENERATE_MODEL=os.getenv("GENERATE_MODEL",cls.GENERATE_MODEL),
             EMBED_MODEL=os.getenv("EMBED_MODEL",cls.EMBED_MODEL),
+            KG_ENGINE=os.getenv("KG_ENGINE",cls.KG_ENGINE),
         )

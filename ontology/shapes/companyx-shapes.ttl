@@ -1,0 +1,96 @@
+@prefix cx: <https://company-x.example/ontology/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cx:ContractShape a sh:NodeShape ;
+    sh:targetClass cx:Contract ;
+    sh:property [
+        sh:path cx:recordId ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Contract에는 원천 계약 ID가 정확히 하나 있어야 한다."@ko
+    ] ;
+    sh:property [
+        sh:path cx:contractClient ;
+        sh:class cx:Client ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Contract는 Client를 정확히 하나 가리켜야 한다."@ko
+    ] ;
+    sh:property [
+        sh:path cx:contractProduct ;
+        sh:class cx:Product ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Contract는 Product를 정확히 하나 가리켜야 한다."@ko
+    ] ;
+    sh:property [
+        sh:path cx:startDate ;
+        sh:datatype xsd:date ;
+        sh:lessThanOrEquals cx:endDate ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "계약 시작일은 종료일보다 늦을 수 없다."@ko
+    ] ;
+    sh:property [
+        sh:path cx:endDate ;
+        sh:datatype xsd:date ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path cx:status ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] .
+
+cx:SupportTicketShape a sh:NodeShape ;
+    sh:targetClass cx:SupportTicket ;
+    sh:property [
+        sh:path cx:recordId ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path cx:ticketClient ;
+        sh:class cx:Client ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "SupportTicket은 Client를 정확히 하나 가리켜야 한다."@ko
+    ] ;
+    sh:property [
+        sh:path cx:ticketProduct ;
+        sh:class cx:Product ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "SupportTicket은 Product를 정확히 하나 가리켜야 한다."@ko
+    ] ;
+    sh:property [
+        sh:path cx:status ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] .
+
+cx:SourceRowShape a sh:NodeShape ;
+    sh:targetClass cx:SourceRow ;
+    sh:property [
+        sh:path cx:sourceTable ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path cx:sourcePrimaryKey ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path cx:sourceLocator ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] .

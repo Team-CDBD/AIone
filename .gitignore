@@ -2,6 +2,7 @@
 /doc/
 /logs/
 /data/
+/addProject/
 
 # Python build artifacts
 __pycache__/
@@ -11,3 +12,4 @@ __pycache__/
 build/
 dist/
 .venv/
+node_modules/

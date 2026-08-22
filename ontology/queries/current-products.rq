@@ -1,0 +1,18 @@
+PREFIX cx: <https://company-x.example/ontology/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?contract ?contractId ?product ?productName ?start ?end
+WHERE {
+  ?contract a cx:Contract ;
+            cx:recordId ?contractId ;
+            cx:contractClient ?client ;
+            cx:contractProduct ?product ;
+            cx:startDate ?start ;
+            cx:status "active" .
+  ?product rdfs:label ?productName .
+  OPTIONAL { ?contract cx:endDate ?end }
+
+  FILTER (?start <= ?asOf)
+  FILTER (!BOUND(?end) || ?asOf <= ?end)
+}
+ORDER BY ?contractId

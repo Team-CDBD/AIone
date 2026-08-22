@@ -27,6 +27,9 @@ services:
       EMBED_MODEL: nomic-embed-text:latest
       TOP_K: 5
       TAU: 0.55
+      KG_ENGINE: python  # python|jena|shadow. jena/shadow는 §P2/P3 실연결 전까지 python과 동일하게 동작.
+    volumes:
+      - ./data:/app/data:ro  # `docker compose run --rm mcp python -m ingest data/....zip`가 -v 없이 바로 되게.
     depends_on:
       postgres: {condition: service_healthy}
 volumes: {pgdata: {}, ollama: {}}

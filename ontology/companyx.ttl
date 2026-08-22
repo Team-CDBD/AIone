@@ -1,0 +1,130 @@
+@prefix cx: <https://company-x.example/ontology/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cx:CompanyXOntology a owl:Ontology ;
+    rdfs:label "Company-X ontology learning model"@en ;
+    rdfs:comment "실제 데이터의 의미 손실, 시간, 검증을 학습하기 위한 최소 온톨로지"@ko .
+
+cx:BusinessRecord a owl:Class ;
+    rdfs:label "업무 기록"@ko .
+
+cx:Client a owl:Class ;
+    rdfs:label "고객사"@ko .
+
+cx:Product a owl:Class ;
+    rdfs:label "제품"@ko .
+
+cx:Employee a owl:Class ;
+    rdfs:label "직원"@ko .
+
+cx:Department a owl:Class ;
+    rdfs:label "부서"@ko .
+
+cx:Project a owl:Class ;
+    rdfs:label "프로젝트"@ko .
+
+cx:GraphEdge a owl:Class ;
+    rdfs:label "공식 JSON graph 관계 투영"@ko .
+
+cx:Contract a owl:Class ;
+    rdfs:subClassOf cx:BusinessRecord ;
+    rdfs:label "계약"@ko .
+
+cx:SupportTicket a owl:Class ;
+    rdfs:subClassOf cx:BusinessRecord ;
+    rdfs:label "지원 티켓"@ko .
+
+cx:Claim a owl:Class ;
+    rdfs:label "문서 또는 사람이 한 주장"@ko .
+
+cx:SourceRow a owl:Class ;
+    rdfs:subClassOf prov:Entity ;
+    rdfs:label "원천 DB 행"@ko .
+
+cx:hasContract a owl:ObjectProperty ;
+    rdfs:domain cx:Client ;
+    rdfs:range cx:Contract ;
+    owl:inverseOf cx:contractClient .
+
+cx:contractClient a owl:ObjectProperty ;
+    rdfs:domain cx:Contract ;
+    rdfs:range cx:Client .
+
+cx:contractProduct a owl:ObjectProperty ;
+    rdfs:domain cx:Contract ;
+    rdfs:range cx:Product .
+
+cx:reportedTicket a owl:ObjectProperty ;
+    rdfs:domain cx:Client ;
+    rdfs:range cx:SupportTicket ;
+    owl:inverseOf cx:ticketClient .
+
+cx:ticketClient a owl:ObjectProperty ;
+    rdfs:domain cx:SupportTicket ;
+    rdfs:range cx:Client .
+
+cx:ticketProduct a owl:ObjectProperty ;
+    rdfs:domain cx:SupportTicket ;
+    rdfs:range cx:Product .
+
+cx:recordId a owl:DatatypeProperty ;
+    rdfs:range xsd:integer .
+
+cx:status a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+cx:startDate a owl:DatatypeProperty ;
+    rdfs:domain cx:Contract ;
+    rdfs:range xsd:date .
+
+cx:endDate a owl:DatatypeProperty ;
+    rdfs:domain cx:Contract ;
+    rdfs:range xsd:date .
+
+cx:amount a owl:DatatypeProperty ;
+    rdfs:range xsd:integer .
+
+cx:priority a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+cx:createdAt a owl:DatatypeProperty ;
+    rdfs:range xsd:dateTime .
+
+cx:resolvedAt a owl:DatatypeProperty ;
+    rdfs:range xsd:dateTime .
+
+cx:sourceTable a owl:DatatypeProperty ;
+    rdfs:domain cx:SourceRow ;
+    rdfs:range xsd:string .
+
+cx:sourcePrimaryKey a owl:DatatypeProperty ;
+    rdfs:domain cx:SourceRow ;
+    rdfs:range xsd:integer .
+
+cx:sourceLocator a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+cx:sourceId a owl:DatatypeProperty ;
+    rdfs:range xsd:string .
+
+cx:edgeSource a owl:ObjectProperty ;
+    rdfs:domain cx:GraphEdge .
+
+cx:edgeTarget a owl:ObjectProperty ;
+    rdfs:domain cx:GraphEdge .
+
+cx:edgeRelation a owl:DatatypeProperty ;
+    rdfs:domain cx:GraphEdge ;
+    rdfs:range xsd:string .
+
+cx:contract_id a owl:DatatypeProperty ;
+    rdfs:domain cx:GraphEdge ;
+    rdfs:range xsd:long .
+
+cx:ticket_id a owl:DatatypeProperty ;
+    rdfs:domain cx:GraphEdge ;
+    rdfs:range xsd:long .

@@ -1,0 +1,62 @@
+@prefix cx: <https://company-x.example/ontology/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cx:OfficialGraphEdgeShape a sh:NodeShape ;
+    sh:targetClass cx:GraphEdge ;
+    sh:property [
+        sh:path cx:amount ;
+        sh:datatype xsd:integer
+    ] ;
+    sh:property [
+        sh:path cx:contract_id ;
+        sh:datatype xsd:long
+    ] ;
+    sh:property [
+        sh:path cx:ticket_id ;
+        sh:datatype xsd:long
+    ] ;
+    sh:property [
+        sh:path cx:priority ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path cx:status ;
+        sh:datatype xsd:string
+    ] ;
+    sh:sparql [
+        sh:message "USES relation requires contract_id" ;
+        sh:select """
+            PREFIX cx: <https://company-x.example/ontology/>
+            SELECT $this
+            WHERE {
+              $this cx:edgeRelation "USES" .
+              FILTER NOT EXISTS { $this cx:contract_id ?contractId }
+            }
+        """
+    ] ;
+    sh:sparql [
+        sh:message "relation endpoints must match schema" ;
+        sh:select """
+            PREFIX cx: <https://company-x.example/ontology/>
+            SELECT $this
+            WHERE {
+              $this cx:edgeRelation ?relation ;
+                    cx:edgeSource ?source ;
+                    cx:edgeTarget ?target .
+              VALUES (?relation ?sourceType ?targetType) {
+                ("BELONGS_TO" cx:Employee cx:Department)
+                ("HEAD_IS" cx:Department cx:Employee)
+                ("USES" cx:Client cx:Product)
+                ("MANAGES_ACCOUNT" cx:Employee cx:Client)
+                ("HAS_PROJECT" cx:Client cx:Project)
+                ("LEADS" cx:Employee cx:Project)
+                ("REPORTED_ISSUE" cx:Client cx:Product)
+              }
+              FILTER (
+                NOT EXISTS { ?source a ?sourceType }
+                || NOT EXISTS { ?target a ?targetType }
+              )
+            }
+        """
+    ] .

@@ -1,0 +1,43 @@
+THIRD_PARTY_NOTICES
+====================
+
+이 저장소는 아래 두 외부 프로젝트의 소스 일부를 편입(내재화)했다. 자세한 배경은
+logs/외부프로젝트_내재화_계획_2026-08-22.html §10.1과 addProject/ref.md를 참고한다.
+
+1) companyx-ontology-lab-main.zip
+----------------------------------
+SHA-256 : 1dbe6865097a8429bc466e3f81bfafdc97b41b11714a9dbc5beeb1c9986401b
+용도    : Java/Jena 온톨로지·그래프 프로젝션 구현(java/companyx-ontology/), 공유 SPARQL/SHACL/Turtle
+          자산(ontology/), ADR 9건(docs/adr/0001~0009)의 원 출처.
+라이선스: 원본 ZIP 안에서 LICENSE/NOTICE 파일을 확인하지 못했다. 소유권·재배포 권한이 사내에서
+          별도로 확인되지 않았다면 이 코드를 배포 브랜치나 외부 공개 저장소로 이동하지 말 것.
+          (계획 문서 R-01, P0 게이트 참조 — 권리 확인 전 제품 배포 금지.)
+편입 범위: jena-lab/src/main/java/io/companyx/ontology 하위 핵심 클래스 전부, prototype/graphcomparison
+          하위 Jena/Official* 계열(Age* 계열·benchmark/comparison CLI 제외), 대응 JUnit 테스트,
+          shapes/*.ttl, ontology(companyx.ttl), queries/*.rq, docs/adr/0001~0009.
+          정확한 포함/제외 파일 목록은 logs/개발완료보고서_외부프로젝트내재화_2026-08-22.md 참조.
+
+2) NL2SQL-main.zip
+-------------------
+SHA-256 : 356829cc00aed5ddb1efce0ad0223a6fb54943a32e6eaa0ea25d33a21adebdf8
+용도    : NL2SQL 의미 검증 규칙(src/nl2sql/domain/semantic_guard.py)의 이식 원본, 500문항 확장
+          fixture(tests/fixtures/nl2sql_extended_questions.json), execution-match 평가기
+          (tools/evaluate_nl2sql_extended.py)의 재작성 원본.
+라이선스: 원본 ZIP 안에서 LICENSE/NOTICE 파일을 확인하지 못했다. 위와 동일한 제약이 적용된다.
+편입 범위: semantic_validator.py의 규칙 중 현재 저장소 스키마(sql/*.sql)와 컬럼 단위로 대조해
+          유효성이 확인된 규칙만 이식했다(스키마 diff와 채택/제외 사유는 개발완료보고서 참조).
+          service/LLM/executor/config, 정규식 guard, dataset 사본은 계획대로 병합하지 않았다.
+
+3) AirMCP (@airmcp-dev/core)
+------------------------------
+용도    : mcp-air/의 스캐폴딩 대상 패키지. package.json에 0.1.3으로 정확히 pin.
+근거    : addProject/ref.md의 공식 홈페이지 권고, npm install로 실제 버전 존재를 확인함
+          (개발 환경에 네트워크가 있어 `npm install` 성공, `npx tsc` 컴파일 성공).
+리스크  : 홈페이지 안내상 GitHub 저장소가 archived 상태 — docs/adr/0011 참조. 상용 패키지
+          (Shield/Hive)는 설치하지 않았다.
+
+법적 게이트 상태
+-----------------
+두 ZIP 모두 LICENSE/NOTICE 파일이 없어 재배포·수정 권한이 명시적으로 확인되지 않았다(R-01).
+이번 라운드는 사내 작업 브랜치(git worktree) 안에서의 편입까지만 수행했으며, 공개 배포·외부
+저장소 push는 권리 확인이 완료되기 전까지 수행하지 않는다.
