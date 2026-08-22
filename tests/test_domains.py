@@ -26,6 +26,13 @@ def test_sql_guard_negative_cases_and_limit():
     assert not guard("SELECT * FROM kg_nodes",10).ok
     assert not guard("SELECT * FROM clients -- bypass",10).ok
     assert guard("SELECT * FROM clients LIMIT 100",5).sql.endswith("LIMIT 5")
+def test_sql_guard_does_not_treat_function_from_as_table():
+    assert guard("SELECT EXTRACT(YEAR FROM registered_at) FROM clients").ok
+    assert guard("SELECT SUBSTRING(name FROM 1 FOR 2) FROM clients").ok
+    assert guard("SELECT TRIM(BOTH ' ' FROM name) FROM clients").ok
+def test_sql_guard_cte_checks_physical_tables_only():
+    assert guard("WITH recent AS (SELECT id FROM clients) SELECT id FROM recent").ok
+    assert not guard("WITH leaked AS (SELECT * FROM pg_user) SELECT * FROM leaked").ok
 def test_graph_plan_reachability():
     assert plan("client-a",NodeType.CLIENT,["USES","HAS_PROJECT"],["project"],2).max_hops==2
     try:plan("product-a",NodeType.PRODUCT,["BELONGS_TO"],["department"],1)

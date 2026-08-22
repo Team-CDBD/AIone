@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import re
+from sqlglot import exp, parse_one
+from sqlglot.errors import ParseError
 
 ALLOWED_TABLES = {"departments","employees","clients","products","contracts","projects","sales","support_tickets"}
 BANNED = {"insert","update","delete","drop","alter","create","truncate","grant","revoke","copy","vacuum","call","do","merge","pg_read_file","pg_sleep","dblink","lo_import","strftime","set","reset"}
@@ -45,9 +47,14 @@ def guard(raw: str, max_rows: int = 100) -> GuardResult:
         return GuardResult(False, reason="SELECT 이외 구문")
     low = without_trailing.lower()
     if any(re.search(rf"\b{re.escape(word)}\b", low) for word in BANNED): return GuardResult(False, reason="금지 키워드")
-    tables = re.findall(r"(?i)\b(?:from|join)\s+([a-z_][\w.]*)", without_trailing)
-    for table in tables:
-        name = table.split(".")[-1].lower()
+    try:
+        parsed = parse_one(without_trailing, read="postgres")
+    except ParseError as exc:
+        return GuardResult(False, reason=f"SQL 파싱 실패: {exc}")
+    cte_names = {cte.alias_or_name.lower() for cte in parsed.find_all(exp.CTE)}
+    tables = {table.name.lower() for table in parsed.find_all(exp.Table)
+              if table.name and table.name.lower() not in cte_names}
+    for name in tables:
         if name not in ALLOWED_TABLES: return GuardResult(False, reason=f"허용되지 않은 테이블: {name}")
     if not tables: return GuardResult(False, reason="허용 테이블이 없습니다")
     limit = max(1, min(int(max_rows), 1000))

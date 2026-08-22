@@ -8,8 +8,14 @@
 // against a live npm install in this environment (no network). Treat this file as a skeleton to
 // be corrected against the real package API before P5 wiring.
 import { defineServer, defineTool } from "@airmcp-dev/core";
+import { format } from "node:util";
 import { z } from "zod";
 import { PythonWorker } from "./python-worker.js";
+
+// AirMCP core writes startup/access logs with console.log.  In stdio mode
+// stdout is reserved exclusively for JSON-RPC frames, so preserve logs on
+// stderr before the server starts.
+console.log = (...args: unknown[]) => { process.stderr.write(`${format(...args)}\n`); };
 
 const worker = new PythonWorker("python3", ["-m", "adapters.air_worker"], 30000);
 

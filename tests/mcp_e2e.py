@@ -2,13 +2,14 @@
 import anyio
 import json
 import os
+import sys
 from mcp.client import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 
 async def main() -> None:
     params = StdioServerParameters(
-        command="python", args=["-m", "adapters.mcp_sdk_server"], env=dict(os.environ),
+        command=sys.executable, args=["-m", "adapters.mcp_sdk_server"], env=dict(os.environ),
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
