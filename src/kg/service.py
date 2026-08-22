@@ -25,4 +25,10 @@ class GraphService:
         except (PlanError,ValueError) as exc: return GraphOutcome(ToolStatus.GUARD_REJECTED,reason=str(exc))
         rows=self.repo.traverse(traversal.start_id,[r.value for r in traversal.relations],[t.value for t in traversal.target_types],traversal.max_hops)
         unit=aggregate_unit(traversal.relations[-1] if traversal.relations else None,aggregate)
-        return GraphOutcome(ToolStatus.OK if rows else ToolStatus.EMPTY,rows,unit,f"start={resolved.node_id}; relations={relations}; max_hops={max_hops}")
+        # 근사 일치로 다른 개체를 조회했다면 반드시 밝힌다 — 묻지 않은 개체의 답을
+        # 확신 있게 돌려주는 것이 조용한 오답의 경로다.
+        note=(f"'{start_entity}'와 정확히 일치하는 개체가 없어 '{resolved.name}'(유사도 {resolved.confidence:.2f})로 해석했습니다."
+              if resolved.method=="fuzzy" else None)
+        return GraphOutcome(ToolStatus.OK if rows else ToolStatus.EMPTY,rows,unit,
+                            f"start={resolved.node_id}({resolved.method}); relations={relations}; max_hops={max_hops}",
+                            candidates=[resolved.name] if resolved.method=="fuzzy" and resolved.name else [],reason=note)

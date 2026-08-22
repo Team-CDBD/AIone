@@ -5,6 +5,11 @@ class KgRepository:
     def __init__(self, db: Db): self.db = db
     def exact_by_name(self, text: str) -> dict[str, Any] | None:
         rows = self.db.fetch_dicts("SELECT node_id, name, node_type FROM kg_nodes WHERE lower(name)=lower(%s) LIMIT 1", (text,)); return rows[0] if rows else None
+    def exact_by_compact_name(self, text: str) -> dict[str, Any] | None:
+        """공백을 무시한 정확 일치 — '기술 지원팀'과 '기술지원팀'은 같은 노드다."""
+        rows = self.db.fetch_dicts(
+            "SELECT node_id, name, node_type FROM kg_nodes WHERE replace(lower(name),' ','')=replace(lower(%s),' ','') LIMIT 1", (text,))
+        return rows[0] if rows else None
     def by_id(self, node_id: str) -> dict[str, Any] | None:
         rows = self.db.fetch_dicts("SELECT node_id, name, node_type FROM kg_nodes WHERE node_id=%s", (node_id,)); return rows[0] if rows else None
     def trigram_top(self, text: str, k: int = 3) -> list[dict[str, Any]]:

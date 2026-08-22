@@ -6,6 +6,10 @@ from .repository import KgRepository
 def normalize(text: str) -> str: return " ".join(unicodedata.normalize("NFKC", text).strip().lower().split())
 class KgEntityResolver:
     TRGM_THRESHOLD = 0.45
+    # 식별자(Client-ZZZ, Product-X9)는 오타 허용 대상이 아니다. 접두사가 같다는 이유만으로
+    # trigram 유사도가 0.5~0.7까지 뜨기 때문에, 일반 이름과 같은 임계값을 쓰면 존재하지 않는
+    # 개체가 조용히 다른 개체로 치환된다. 식별자 형태 입력은 사실상 정확 일치만 받는다.
+    ID_TRGM_THRESHOLD = 0.9
     # Korean particles are Unicode "word" characters, so a trailing \b does not
     # exist in strings such as ``Client-A가``.  Keep the identifier alphabet
     # explicit and stop before any character that cannot belong to an id.
@@ -15,11 +19,14 @@ class KgEntityResolver:
         value = normalize(text)
         node = self.repo.exact_by_name(value)
         if node: return Resolution(str(node["node_id"]), str(node["name"]), str(node["node_type"]), 1.0, "exact")
+        node = self.repo.exact_by_compact_name(value)
+        if node: return Resolution(str(node["node_id"]), str(node["name"]), str(node["node_type"]), 1.0, "exact")
         if value in self.aliases:
             node = self.repo.by_id(self.aliases[value])
             if node: return Resolution(str(node["node_id"]),str(node["name"]),str(node["node_type"]),.95,"alias")
         candidates = self.repo.trigram_top(value,3)
-        if candidates and float(candidates[0].get("sim",0)) >= self.TRGM_THRESHOLD:
+        threshold = self.ID_TRGM_THRESHOLD if self.ENTITY_PATTERN.fullmatch(text.strip()) else self.TRGM_THRESHOLD
+        if candidates and float(candidates[0].get("sim",0)) >= threshold:
             node=candidates[0]; return Resolution(str(node["node_id"]),str(node["name"]),str(node["node_type"]),float(node["sim"]),"fuzzy")
         return Resolution(None,None,None,0.0,"not_found",[str(row["name"]) for row in candidates])
     def find_all(self, question: str) -> list[Resolution]:

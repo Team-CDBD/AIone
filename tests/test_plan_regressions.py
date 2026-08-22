@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from kg.resolver import KgEntityResolver
+from kg.repository import KgRepository
 from nl2sql.domain.guard import guard
 from nl2sql.domain.normalizer import normalize_korean_enums
 from vector.provider import build_params, infer_doc_type
@@ -80,6 +81,36 @@ def test_global_plan_groups_on_the_ontology_side():
 def test_entity_question_still_uses_traversal_scope():
     entity = Resolution("client_1", "Client-A", "client", 1.0, "exact")
     assert "scope" not in build_kg_params("Client-A가 사용 중인 제품은?", [entity])
+
+
+@pytest.mark.parametrize("question, expected", [
+    ("장애 신고가 제일 많이 들어온 제품 알려줘", "knowledge_graph"),
+    ("현재 진행중 프로젝트의 리더들 보여줘", "knowledge_graph"),
+    ("담당 고객사가 제일 많은 사람은?", "knowledge_graph"),
+    ("기술지원 이슈 최다 제품은?", "knowledge_graph"),
+    # 문서 질문이 KG로 끌려가면 안 된다 — "이슈"는 KG 단독 신호가 아니다.
+    ("고객사 미팅에서 논의된 일정 지연 이슈는?", "vector_search"),
+    ("서버 장애 사례와 원인이 궁금해", "vector_search"),
+])
+def test_paraphrased_questions_route_like_the_official_wording(question, expected):
+    has_entity = bool(KgEntityResolver.ENTITY_PATTERN.search(question))
+    assert score_question(question, has_entity, signals=default_signals())[0].tool == expected
+
+
+@pytest.mark.parametrize("spaced, compact", [("진행 중인 프로젝트를 이끄는 직원", "진행중인 프로젝트를 이끄는 직원")])
+def test_spacing_variants_build_the_same_plan(spaced, compact):
+    assert build_kg_params(spaced, []) == build_kg_params(compact, [])
+
+
+def test_identifier_lookup_does_not_silently_substitute_a_similar_entity():
+    """Client-ZZZ가 Client-Z로 조용히 바뀌면 사용자는 묻지 않은 개체의 답을 받는다."""
+    class TrigramOnlyDb:  # 정확/공백무시 일치는 실패하고 유사 후보만 나오는 상황
+        def fetch_dicts(self, sql, params=()):
+            return [{"node_id": "client_26", "name": "Client-Z", "node_type": "client", "sim": 0.67}] if "similarity" in sql else []
+        def fetch(self, sql, params=()): return []
+    resolved = KgEntityResolver(KgRepository(TrigramOnlyDb())).resolve("Client-ZZZ")
+    assert resolved.node_id is None, "식별자는 근사 일치로 다른 개체가 되면 안 된다"
+    assert resolved.candidates == ["Client-Z"]
 
 
 def test_corrected_dataset_contract_is_valid():

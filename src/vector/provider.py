@@ -11,7 +11,8 @@ from .service import SearchService
 SIGNAL = SignalSpec(
     tool=ToolName.VECTOR_SEARCH,
     weight=3.0,
-    keywords=("방법","알려줘","궁금해","어떻게","내용","보여줘","사례","원인","장애","설치","가이드","회의","제안서","매뉴얼","정책","취약점"),
+    keywords=("방법","알려줘","궁금해","어떻게","내용","보여줘","사례","원인","장애","설치","가이드",
+              "회의","미팅","논의","제안서","매뉴얼","정책","취약점","문서"),
     entity_when="absent",
     entity_bonus=1.0,
 )
