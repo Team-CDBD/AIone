@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CompanyX MCP</title>
+<style>
+  :root{color-scheme:light dark;--ink:#172033;--muted:#607086;--line:#d9e1ea;--bg:#f3f6f9;--card:#fff;
+        --navy:#173b62;--blue:#eaf3ff;--green:#eaf7f0;--green-ink:#176b47;--amber:#fff5dd;--amber-ink:#865b00;
+        --red:#fff0f0;--red-ink:#a33a3a;--accent:#175ea8}
+  @media (prefers-color-scheme:dark){:root{--ink:#e5ecf4;--muted:#93a3b8;--line:#2b3a4d;--bg:#111823;--card:#18212e;
+        --navy:#8fb6e4;--blue:#1c2a3d;--green:#15291f;--green-ink:#6fd39f;--amber:#2e2415;--amber-ink:#e2b558;
+        --red:#301a1a;--red-ink:#ef8f8f;--accent:#6aa9e9}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+  header{background:var(--navy);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  @media (prefers-color-scheme:dark){header{background:#16202d;border-bottom:1px solid var(--line)}}
+  header h1{margin:0;font-size:17px;letter-spacing:-.01em}
+  header .status{margin-left:auto;font-size:12.5px;opacity:.9;display:flex;gap:8px;flex-wrap:wrap}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  main{max-width:1080px;margin:22px auto;padding:0 18px}
+  .tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:20px}
+  .tabs button{border:0;background:none;padding:10px 18px;font:inherit;font-weight:600;color:var(--muted);
+               cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tabs button[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:16px}
+  label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px}
+  textarea,input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;
+        font:inherit;background:var(--bg);color:var(--ink)}
+  textarea{resize:vertical;min-height:64px}
+  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
+  .row>div{flex:1 1 160px}
+  button.go{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 22px;font:inherit;
+            font-weight:600;cursor:pointer;white-space:nowrap}
+  button.go:disabled{opacity:.55;cursor:progress}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .chips button{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:999px;
+                padding:4px 12px;font:inherit;font-size:12.5px;cursor:pointer}
+  .chips button:hover{border-color:var(--accent);color:var(--accent)}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700}
+  .ok{color:var(--green-ink);background:var(--green)}
+  .warn{color:var(--amber-ink);background:var(--amber)}
+  .bad{color:var(--red-ink);background:var(--red)}
+  .note{color:var(--accent);background:var(--blue)}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted)}
+  .answer{white-space:pre-wrap;font-size:15.5px;line-height:1.72}
+  h3{margin:20px 0 8px;font-size:14px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{border-bottom:1px solid var(--line);padding:7px 11px;text-align:left;white-space:nowrap}
+  th{background:var(--bg);font-weight:600;color:var(--navy);position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:0}
+  details{margin-top:12px}
+  summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600}
+  pre{margin:8px 0 0;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;
+      overflow-x:auto;font-size:12.5px;line-height:1.6;font-family:ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+  .muted{color:var(--muted);font-size:13px}
+  .err{border-left:4px solid var(--red-ink);padding-left:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>CompanyX MCP</h1>
+  <div class="status" id="status">상태 확인 중…</div>
+</header>
+
+<main>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="ask">자연어 질의</button>
+    <button role="tab" aria-selected="false" data-tab="console">도구 콘솔</button>
+  </div>
+
+  <!-- 자연어 질의 -->
+  <section id="tab-ask">
+    <div class="card">
+      <label for="q">질문</label>
+      <textarea id="q" placeholder="예: 서울 지역 매출 상위 5개 고객사를 알려줘"></textarea>
+      <div class="row">
+        <button class="go" id="askBtn">질의</button>
+      </div>
+      <div class="chips" id="samples"></div>
+    </div>
+    <div id="askOut"></div>
+  </section>
+
+  <!-- 도구 콘솔 -->
+  <section id="tab-console" hidden>
+    <div class="card">
+      <label for="toolSel">도구</label>
+      <select id="toolSel"></select>
+      <p class="muted" id="toolHint"></p>
+      <label for="paramsIn" style="margin-top:14px">파라미터 (JSON)</label>
+      <textarea id="paramsIn" style="min-height:130px;font-family:ui-monospace,Consolas,monospace;font-size:13px"></textarea>
+      <div class="row">
+        <button class="go" id="callBtn">호출</button>
+      </div>
+      <details><summary>입력 스키마</summary><pre id="schemaOut"></pre></details>
+    </div>
+    <div id="callOut"></div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (t, cls, txt) => { const n = document.createElement(t); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+
+const STATUS_CLASS = {ok:'ok', empty:'warn', entity_not_found:'warn', guard_rejected:'warn', timeout:'bad', upstream_error:'bad'};
+const SAMPLES = ["서울 지역 매출 상위 5개 고객사를 알려줘", "2025년 3분기 총 매출액은 얼마야?",
+                 "Product-C1 설치 방법이 궁금해", "Client-A가 사용 중인 제품은?", "가장 많은 고객을 담당하는 직원은?"];
+
+// --- 탭 ---
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  $('#tab-ask').hidden = b.dataset.tab !== 'ask';
+  $('#tab-console').hidden = b.dataset.tab !== 'console';
+});
+
+// --- 상태 ---
+fetch('/api/health').then(r => r.json()).then(h => {
+  const box = $('#status'); box.textContent = '';
+  Object.entries(h.modules).forEach(([name, up]) => {
+    const s = el('span'); const d = el('span', 'dot'); d.style.background = up ? '#3ac07f' : '#e06a6a';
+    s.append(d, document.createTextNode(name)); box.append(s);
+  });
+  box.append(el('span', null, `${h.generate_model} · TOP_K ${h.top_k} · TAU ${h.tau}`));
+}).catch(e => $('#status').textContent = '상태 조회 실패: ' + e.message);
+
+// --- 샘플 칩 ---
+SAMPLES.forEach(s => { const b = el('button', null, s); b.onclick = () => { $('#q').value = s; ask(); }; $('#samples').append(b); });
+
+// --- 결과 렌더 ---
+function renderResult(res) {
+  const frag = document.createDocumentFragment();
+  if (!res) return frag;
+  const basis = res.answer_basis || {};
+  if (basis.row_count) {
+    const h = el('h3', null, `근거 · ${basis.unit} ${basis.row_count}건`); frag.append(h);
+    const wrap = el('div', 'scroll'), t = el('table');
+    const thead = el('thead'), trh = el('tr');
+    (basis.columns || []).forEach(c => trh.append(el('th', null, c)));
+    thead.append(trh); t.append(thead);
+    const tb = el('tbody');
+    (basis.rows || []).forEach(r => {
+      const tr = el('tr');
+      (Array.isArray(r) ? r : Object.values(r)).forEach(v => tr.append(el('td', null, v === null ? '—' : String(v))));
+      tb.append(tr);
+    });
+    t.append(tb); wrap.append(t); frag.append(wrap);
+  }
+  if (res.candidates && res.candidates.length) {
+    frag.append(el('h3', null, '후보'));
+    frag.append(el('p', 'muted', res.candidates.join(', ')));
+  }
+  if (res.notes && res.notes.length) {
+    frag.append(el('h3', null, '비고'));
+    res.notes.forEach(n => frag.append(el('p', 'muted', n)));
+  }
+  const q = (res.provenance || {}).query;
+  if (q) {
+    const d = el('details'); d.append(el('summary', null, '질의 원문 보기'), el('pre', null, q)); frag.append(d);
+  }
+  return frag;
+}
+
+function statusPill(status) {
+  return el('span', 'pill ' + (STATUS_CLASS[status] || 'note'), status);
+}
+
+function showError(box, e) {
+  box.innerHTML = ''; const c = el('div', 'card err');
+  c.append(el('strong', null, '요청 실패'), el('p', 'muted', e.message));
+  box.append(c);
+}
+
+// --- 자연어 질의 ---
+async function ask() {
+  const question = $('#q').value.trim(); if (!question) return;
+  const box = $('#askOut'), btn = $('#askBtn');
+  btn.disabled = true; box.innerHTML = '<div class="card muted">질의 중…</div>';
+  try {
+    const r = await fetch('/api/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question})});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    box.innerHTML = '';
+    const card = el('div', 'card'), meta = el('div', 'meta');
+    if (d.routing) {
+      meta.append(el('span', 'pill note', d.routing.tool));
+      meta.append(el('span', null, `신뢰도 ${d.routing.confidence} · Stage ${d.routing.stage}`));
+      if (d.routing.runner_up) meta.append(el('span', null, `2위 ${d.routing.runner_up.tool} ${d.routing.runner_up.score}`));
+      if (d.routing.entities.length) meta.append(el('span', null, '개체: ' + d.routing.entities.join(', ')));
+    }
+    if (d.result) {
+      meta.append(statusPill(d.result.status));
+      meta.append(el('span', null, `${d.result.provenance.elapsed_ms}ms`));
+      if (d.result.provenance.degraded) meta.append(el('span', 'pill warn', d.result.provenance.degraded));
+    }
+    if (d.considered && d.considered.length > 1) meta.append(el('span', null, '검토: ' + d.considered.join(', ')));
+    card.append(meta, el('div', 'answer', d.answer), renderResult(d.result));
+    box.append(card);
+  } catch (e) { showError(box, e); } finally { btn.disabled = false; }
+}
+$('#askBtn').onclick = ask;
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask(); });
+
+// --- 도구 콘솔 ---
+const EXAMPLE = {
+  vector_search: {query: "Product-C1 설치 방법", top_k: 5},
+  nl2sql: {question: "활성 상태인 계약 수는?", max_rows: 100},
+  knowledge_graph: {start_entity: "Client-A", relations: ["USES"], target_types: ["product"], max_hops: 1},
+};
+let TOOLS = [];
+fetch('/api/tools').then(r => r.json()).then(list => {
+  TOOLS = list;
+  list.forEach(t => { const o = el('option', null, t.name); o.value = t.name; $('#toolSel').append(o); });
+  syncTool();
+}).catch(e => $('#toolHint').textContent = '도구 목록 조회 실패: ' + e.message);
+
+function syncTool() {
+  const t = TOOLS.find(x => x.name === $('#toolSel').value); if (!t) return;
+  $('#toolHint').textContent = t.guideline || '';
+  $('#schemaOut').textContent = JSON.stringify(t.input_schema, null, 2);
+  $('#paramsIn').value = JSON.stringify(EXAMPLE[t.name] || {}, null, 2);
+}
+$('#toolSel').onchange = syncTool;
+
+$('#callBtn').onclick = async () => {
+  const box = $('#callOut'), btn = $('#callBtn');
+  let params;
+  try { params = JSON.parse($('#paramsIn').value || '{}'); }
+  catch (e) { showError(box, new Error('JSON 파싱 실패: ' + e.message)); return; }
+  btn.disabled = true; box.innerHTML = '<div class="card muted">호출 중…</div>';
+  try {
+    const r = await fetch('/api/tools/' + encodeURIComponent($('#toolSel').value),
+      {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(params)});
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()).slice(0, 200));
+    const d = await r.json();
+    box.innerHTML = '';
+    const card = el('div', 'card'), meta = el('div', 'meta');
+    meta.append(statusPill(d.status), el('span', null, `${d.provenance.elapsed_ms}ms`));
+    if (d.provenance.degraded) meta.append(el('span', 'pill warn', d.provenance.degraded));
+    card.append(meta, renderResult(d));
+    const raw = el('details'); raw.append(el('summary', null, 'ToolResult 원본 JSON'), el('pre', null, JSON.stringify(d, null, 2)));
+    card.append(raw);
+    box.append(card);
+  } catch (e) { showError(box, e); } finally { btn.disabled = false; }
+};
+</script>
+</body>
+</html>

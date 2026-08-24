@@ -35,4 +35,24 @@ services:
       - ./data:/app/data:ro  # `docker compose run --rm mcp python -m ingest data/....zip`가 -v 없이 바로 되게.
     depends_on:
       postgres: {condition: service_healthy}
+  # 웹 화면. mcp와 같은 이미지·같은 registry를 쓰고 전송 방식만 HTTP다.
+  # mcp 서비스(stdio)는 그대로 두므로 MCP 클라이언트 경로에는 영향이 없다.
+  web:
+    build:
+      context: .
+      args:
+        BUILD_SHA: ${BUILD_SHA:-unknown}
+    command: ["python", "-m", "adapters.http_server"]
+    environment:
+      PG_DSN: "postgresql://mcp_reader:${MCP_READER_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-companyx}"
+      OLLAMA_URL: "${OLLAMA_URL:?set OLLAMA_URL in .env — see .env.example}"
+      GENERATE_MODEL: ${GENERATE_MODEL:-gemma4:e4b}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text:latest}
+      TOP_K: ${TOP_K:-5}
+      TAU: ${TAU:-0.55}
+      KG_ENGINE: python
+      WEB_PORT: ${WEB_PORT:-8080}
+    ports: ["${WEB_PORT:-8080}:8080"]
+    depends_on:
+      postgres: {condition: service_healthy}
 volumes: {pgdata: {}}

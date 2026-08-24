@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[web]"
 
 # 원격에서 배포본을 그 자리에서 검증할 수 있어야 한다 — 호스트 bind-mount 없이
 # `docker compose run --rm mcp python tests/mcp_e2e.py`가 그대로 돈다.
@@ -50,5 +50,7 @@ COPY mcp-air/package.json ./mcp-air/package.json
 ENV JAVA_GRAPH_RUNNER_CMD="java -Dcompanyx.dataset=/app/data/graph -jar /app/java/graph-runner.jar --stdio"
 # Air를 실제 진입점으로 켤 때 사용할 명령(§P5 전환 이전에는 미사용).
 ENV AIR_MAIN_CMD="node /app/mcp-air/dist/index.js"
+# 웹 화면은 별도 compose 서비스로 뜬다(`python -m adapters.http_server`). 기본 CMD는 그대로 stdio다.
+ENV WEB_PORT=8080
 
 CMD ["python", "-m", "adapters.mcp_sdk_server"]
