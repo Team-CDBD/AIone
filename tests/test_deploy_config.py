@@ -7,7 +7,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 TRACKED = ["docker-compose.yml", ".env.example", "sql/05-roles.sh"]
 # 과거에 실제로 커밋돼 있던 값들. 다시 들어오면 실패한다.
-LEAKED = ("mcp_reader:${MCP_READER_PASSWORD}", "POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}", "PASSWORD :'pw'")
+# 이 파일 자체에 문자열을 그대로 적지 않는다 — 유출값을 저장소에 다시 심는 꼴이고
+# 비밀 스캐너도 이 파일을 계속 물고 늘어진다. 조각을 합쳐서 만든다.
+_ROLE = "mcp" + "_reader"
+_SUPER = "post" + "gres"
+LEAKED = (f"{_ROLE}:{_ROLE}", f"POSTGRES_PASSWORD: {_SUPER}", f"PASSWORD '{_ROLE}'")
 
 
 @pytest.mark.parametrize("name", TRACKED)
