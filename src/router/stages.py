@@ -1,13 +1,17 @@
 from __future__ import annotations
+import re
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
 from contracts.module import ModuleSpec
 from contracts.resolver import EntityResolver, Resolution
 from .domain.rules import ScoredRoute, score_question
+from .domain.scope import out_of_scope
 from .resolvers import CompositeResolver
 
 AMBIGUOUS_PROFILE = "fallback_ambiguous"
+# 한 문장이 두 가지를 동시에 요구하는 표지. 강한 신호 하나로 단정하면 나머지 절의 답을 잃는다.
+COMPOUND = re.compile(r"(?:그리고|및|,)\s*\S+|(?:도|와|과)\s*(?:함께|같이)|(?:하고|찾고|보고)\s")
 
 
 @dataclass(frozen=True)
@@ -33,6 +37,9 @@ class RuleRouter:
 
     def route(self, question: str) -> list[RouteDecision]:
         if not self.specs: return []
+        # 점수를 내기 전에 판단한다 — 상대 점수만으로는 답할 수 없는 질문도 항상 1위가 생긴다.
+        # 판정 근거는 등록된 모듈이 신고한 키워드다. 날씨 모듈을 꽂으면 날씨는 범위 안이 된다.
+        if out_of_scope(question, self._claimed_terms()): return []
         try: entities = self.resolver.find_all(question)
         except Exception: entities = []
         scores = score_question(question, bool(entities), signals=[spec.signal for spec in self.specs.values()])
@@ -41,9 +48,15 @@ class RuleRouter:
         runner_up = (second.tool, second.score) if second else None
         decisive = (best.evidence >= self.min_evidence
                     and (second is None or (best.score >= self.tau and best.score - second.score >= self.delta)))
+        # 복합 절인데 다른 모듈도 근거를 갖고 있으면 단정하지 않는다.
+        if decisive and COMPOUND.search(question) and sum(1 for item in scores if item.evidence > 0) > 1:
+            decisive = False
         stage: Literal["A", "C"] = "A" if decisive else "C"
         selected = scores[:1] if decisive else scores
         return [self._decision(item, question, stage, runner_up, entities) for item in selected]
+
+    def _claimed_terms(self) -> tuple[str, ...]:
+        return tuple(term for spec in self.specs.values() for term in spec.signal.keywords)
 
     def _decision(self, scored: ScoredRoute, question: str, stage: Literal["A", "C"], runner_up, entities) -> RouteDecision:
         spec = self.specs[scored.tool]

@@ -24,6 +24,9 @@ def score_question(question: str, has_entity: bool = False, *, signals: Sequence
     for signal in signals:
         hits = [term for term in signal.keywords
                 if term.lower() in lowered or re.sub(r"\s+", "", term.lower()) in compact]
+        # '접수'와 '접수된'은 같은 자리를 가리킨다. 겹치는 짧은 쪽을 빼지 않으면 동의어를
+        # 넓힐수록 점수가 부풀어, 키워드를 추가한 모듈이 근거 없이 이긴다.
+        hits = [term for term in hits if not any(other != term and term in other for other in hits)]
         value = signal.weight * len(hits)
         if signal.pattern and re.search(signal.pattern, question, re.I):
             value += signal.pattern_bonus; hits.append(signal.pattern_label)
