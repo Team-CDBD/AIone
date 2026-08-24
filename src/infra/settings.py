@@ -4,8 +4,9 @@ import os
 class Settings:
     TOP_K:int=5
     TAU:float=.55
-    PG_DSN:str="postgresql://mcp_reader:${MCP_READER_PASSWORD}@localhost:5432/companyx"
-    OLLAMA_URL:str="http://localhost:11434"
+    # 자격증명을 기본값으로 두지 않는다 — 코드에 박힌 비밀번호는 저장소에 그대로 커밋된다.
+    PG_DSN:str=""
+    OLLAMA_URL:str=""
     GENERATE_MODEL:str="gemma4:e4b"
     EMBED_MODEL:str="nomic-embed-text:latest"
     KG_ENGINE:str="python"  # python|jena|shadow. 이번 라운드는 python 고정 운영, jena는 배선만.
