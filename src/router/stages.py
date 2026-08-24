@@ -19,13 +19,17 @@ class RouteDecision:
 class RuleRouter:
     """등록된 ModuleSpec 집합에만 의존한다. 모듈을 추가/교체/원격화해도 이 클래스는 바뀌지 않는다."""
     DELTA = .15
+    # 점수는 합으로 정규화되므로 경쟁 모듈이 조용하기만 하면 스친 키워드 하나도 점유율 1.0이 된다.
+    # 단독 키워드 1회(weight 3.0)보다 큰 원점수를 요구해 '조용해서 1위'가 Stage A로 확정되는 것을 막는다.
+    MIN_EVIDENCE = 3.5
 
     def __init__(self, specs: Mapping[str, ModuleSpec], resolver: EntityResolver | None = None,
-                 tau: float = .55, delta: float | None = None):
+                 tau: float = .55, delta: float | None = None, min_evidence: float | None = None):
         self.specs = dict(specs)
         self.resolver = resolver if resolver is not None else CompositeResolver(
             [spec.resolver for spec in self.specs.values() if spec.resolver is not None])
         self.tau, self.delta = tau, self.DELTA if delta is None else delta
+        self.min_evidence = self.MIN_EVIDENCE if min_evidence is None else min_evidence
 
     def route(self, question: str) -> list[RouteDecision]:
         if not self.specs: return []
@@ -35,7 +39,8 @@ class RuleRouter:
         if not scores: return []
         best, second = scores[0], scores[1] if len(scores) > 1 else None
         runner_up = (second.tool, second.score) if second else None
-        decisive = second is None or (best.score >= self.tau and best.score - second.score >= self.delta)
+        decisive = (best.evidence >= self.min_evidence
+                    and (second is None or (best.score >= self.tau and best.score - second.score >= self.delta)))
         stage: Literal["A", "C"] = "A" if decisive else "C"
         selected = scores[:1] if decisive else scores
         return [self._decision(item, question, stage, runner_up, entities) for item in selected]

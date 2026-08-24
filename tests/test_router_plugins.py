@@ -114,3 +114,49 @@ def test_builtin_registry_still_exposes_three_tools():
     decisions = router.route("2024년 총 매출은?")
     assert decisions and decisions[0].tool == ToolName.NL2SQL
     assert decisions[0].guideline
+
+
+# --- 2026-08-25 원격 재검증에서 드러난 결함들의 회귀 방어 ---
+
+def test_stage_c는_모듈을_병렬로_실행한다():
+    """직렬이면 지연이 모듈 수만큼 누적된다. 느린 모듈 하나가 전체 예산을 먹지 않아야 한다."""
+    import time
+    from contracts.tool import AnswerBasis, Provenance, ToolResult, ToolStatus
+    from router.orchestrator import Orchestrator
+
+    class SlowTool:
+        def __init__(self, name): self.name = name
+        def input_schema(self): return {"type": "object"}
+        def health(self): return True
+        def run(self, **params):
+            time.sleep(.15)
+            return ToolResult(self.name, ToolStatus.OK, AnswerBasis(["c"], [["v"]], 1, "행"), Provenance("", [], 0))
+
+    names = ["a", "b", "c"]
+    orch = Orchestrator(router=None, registry={n: SlowTool(n) for n in names})
+    decisions = [_decision_for(n) for n in names]
+    began = time.perf_counter()
+    results = orch.call_tools(decisions)
+    elapsed = time.perf_counter() - began
+    assert [r.status for r in results] == [ToolStatus.OK] * 3
+    assert elapsed < .40, f"병렬 실행이 아니다: {elapsed:.2f}s"
+
+
+def _decision_for(name):
+    from router.stages import RouteDecision
+    return RouteDecision(name, {}, 1.0, "C", None, "fallback_ambiguous", [], "")
+
+
+def test_근거가_약하면_단독_1위여도_StageA로_확정하지_않는다():
+    """점수는 합으로 정규화된다 — 경쟁 모듈이 조용하면 스친 키워드 하나가 점유율 1.0이 된다."""
+    from contracts.module import SignalSpec
+    from router.domain.rules import score_question
+
+    signals = [SignalSpec(tool="solo", weight=1.0, keywords=("가이드",)),
+               SignalSpec(tool="quiet", weight=3.0, keywords=("전혀없는말",))]
+    scored = score_question("가이드", False, signals=signals)
+    assert scored[0].tool == "solo"
+    assert scored[0].score == 1.0            # 상대 점유율만 보면 만점이지만
+    assert scored[0].evidence == 1.0         # 원점수는 바닥이다
+    from router.stages import RuleRouter
+    assert scored[0].evidence < RuleRouter.MIN_EVIDENCE

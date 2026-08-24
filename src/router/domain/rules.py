@@ -8,7 +8,9 @@ from contracts.module import SignalSpec
 
 @dataclass(frozen=True)
 class ScoredRoute:
-    tool: str; score: float; matched: tuple[str, ...]
+    tool: str; score: float; matched: tuple[str, ...]; evidence: float = 0.0
+    """score는 상대 점유율, evidence는 정규화 전 원점수. 상대 점유율만으로는 '경쟁자가 없어서 1위'와
+    '근거가 충분해서 1위'를 구별할 수 없어 두 값을 함께 낸다."""
 
 
 def score_question(question: str, has_entity: bool = False, *, signals: Sequence[SignalSpec]) -> list[ScoredRoute]:
@@ -29,5 +31,5 @@ def score_question(question: str, has_entity: bool = False, *, signals: Sequence
             value += signal.entity_bonus; hits.append("entity" if signal.entity_when == "present" else "no_entity")
         raw[signal.tool] = (value, hits)
     total = sum(value for value, _ in raw.values()) or 1.0
-    return sorted((ScoredRoute(tool, value / total, tuple(hits)) for tool, (value, hits) in raw.items()),
+    return sorted((ScoredRoute(tool, value / total, tuple(hits), value) for tool, (value, hits) in raw.items()),
                   key=lambda item: (-item.score, item.tool))
