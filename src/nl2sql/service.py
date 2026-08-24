@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from contracts.infra import DbQueryError, DbTimeout, DbUnavailable, Llm, LlmError
+from contracts.infra import DbQueryError, DbTimeout, DbUnavailable, Llm, LlmError, LlmTimeout
 from contracts.tool import ToolStatus
 from .domain.guard import extract_limit, guard, infer_unit
 from .domain.normalizer import normalize_korean_enums
@@ -27,6 +27,8 @@ class SqlService:
             # emitting SQL; 300 therefore produced a successful HTTP response
             # with an empty visible response for complex joins.
             try: raw = self.llm.generate(prompt, stop=[";\n\n"], max_tokens=800)
+            # 시간 초과는 업스트림 장애가 아니라 시간 초과다 — 계약에 있는 상태를 쓴다.
+            except LlmTimeout as exc: return SqlOutcome(ToolStatus.TIMEOUT, reason=str(exc))
             except LlmError as exc: return SqlOutcome(ToolStatus.UPSTREAM_ERROR, reason=str(exc))
             checked = guard(raw, max_rows)
             if not checked.ok:

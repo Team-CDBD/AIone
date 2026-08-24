@@ -33,3 +33,21 @@ def test_nl2sql_self_corrects():
     llm=FakeLlm(["DROP TABLE clients","SELECT id FROM clients"])
     result=Nl2SqlTool(SqlService(SqlRepository(FakeDb([{"id":"client-a"}])),llm)).run(question="고객 목록")
     assert result.status is ToolStatus.OK
+
+
+def test_생성_시간초과는_UPSTREAM_ERROR가_아니라_TIMEOUT이다():
+    """httpx.TimeoutException은 TimeoutError가 아니다 — 예전 매핑은 한 번도 걸리지 않았다."""
+    from contracts.infra import LlmTimeout
+    from contracts.tool import ToolStatus
+    from nl2sql.repository import SqlRepository
+    from nl2sql.service import SqlService
+    from tests.fakes import FakeDb
+
+    class TimingOutLlm:
+        def embed(self, text, *, kind): raise LlmTimeout("embed")
+        def generate(self, prompt, *, stop=None, max_tokens=300, timeout_s=None):
+            raise LlmTimeout("/api/generate 90초 초과")
+
+    outcome = SqlService(SqlRepository(FakeDb()), TimingOutLlm()).answer("총 매출은?", [], 100)
+    assert outcome.status is ToolStatus.TIMEOUT
+    assert "초과" in (outcome.reason or "")

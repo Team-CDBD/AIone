@@ -91,3 +91,12 @@ def test_rows_match_pure_scoring_function():
     assert not rows_match([[1, "a"]], [[1, "b"]])
     assert rows_match([[1], [2]], [[2], [1]], ordered=False)
     assert not rows_match([[1], [2]], [[2], [1]], ordered=True)
+
+
+def test_재시도_프롬프트는_거부된_SQL을_포함한다():
+    """temperature=0에서 무엇이 틀렸는지 모르는 재시도는 같은 문장을 그대로 다시 낸다."""
+    from nl2sql.domain.prompt import append_correction
+
+    corrected = append_correction("원본 프롬프트", "SELECT t1.name FROM support_tickets t1", "column t1.name does not exist")
+    assert "SELECT t1.name FROM support_tickets t1" in corrected
+    assert "column t1.name does not exist" in corrected

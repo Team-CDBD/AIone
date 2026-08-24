@@ -7,6 +7,7 @@ class DbQueryError(DbError): pass
 class DbUnavailable(DbError): pass
 class LlmError(RuntimeError): pass
 class LlmTimeout(LlmError): pass
+class LlmBadRequest(LlmError): pass
 
 class Db(Protocol):
     def fetch(self, sql: str, params: Sequence[Any] = ()) -> list[tuple[Any, ...]]: ...
