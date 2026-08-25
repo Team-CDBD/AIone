@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 from typing import Any
+from .secrets import PasswordCipher
 
 TABLE = "server_connections"
 COLUMNS = ("id", "name", "pg_host", "pg_port", "pg_database", "pg_user", "pg_password",
@@ -13,28 +14,37 @@ _SELECT = f"SELECT {', '.join(COLUMNS)} FROM {TABLE}"
 
 
 class ConnectionRepository:
-    def __init__(self, db): self.db = db
+    def __init__(self, db, cipher: PasswordCipher | None = None): self.db, self.cipher = db, cipher
+
+    def _out(self, row: dict[str, Any]) -> dict[str, Any]:
+        row = dict(row)
+        if self.cipher: row["pg_password"] = self.cipher.decrypt(row.get("pg_password"))
+        return row
+
+    def _password(self, value: str | None) -> str | None:
+        return self.cipher.encrypt(value) if self.cipher else value
 
     def list(self) -> list[dict[str, Any]]:
-        return self.db.fetch_dicts(f"{_SELECT} ORDER BY is_active DESC, name")
+        return [self._out(row) for row in self.db.fetch_dicts(f"{_SELECT} ORDER BY is_active DESC, name")]
 
     def get(self, profile_id: int) -> dict[str, Any] | None:
         rows = self.db.fetch_dicts(f"{_SELECT} WHERE id = %s", (profile_id,))
-        return rows[0] if rows else None
+        return self._out(rows[0]) if rows else None
 
     def active(self) -> dict[str, Any] | None:
         rows = self.db.fetch_dicts(f"{_SELECT} WHERE is_active LIMIT 1")
-        return rows[0] if rows else None
+        return self._out(rows[0]) if rows else None
 
     def create(self, values: dict[str, Any]) -> dict[str, Any]:
-        return self.db.fetch_dicts(
+        row = self.db.fetch_dicts(
             f"""INSERT INTO {TABLE}
             (name,pg_host,pg_port,pg_database,pg_user,pg_password,ollama_url,generate_model,embed_model,top_k,tau)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING {', '.join(COLUMNS)}""",
             (values["name"], values["pg_host"], values["pg_port"], values["pg_database"], values["pg_user"],
-             values.get("pg_password"), values["ollama_url"], values["generate_model"], values["embed_model"],
+             self._password(values.get("pg_password")), values["ollama_url"], values["generate_model"], values["embed_model"],
              values["top_k"], values["tau"]),
         )[0]
+        return self._out(row)
 
     def update(self, profile_id: int, values: dict[str, Any]) -> dict[str, Any] | None:
         # pg_password가 None이면 '변경 없음' — COALESCE로 기존 값을 그대로 둔다.
@@ -43,10 +53,10 @@ class ConnectionRepository:
             pg_password=COALESCE(%s, pg_password), ollama_url=%s, generate_model=%s, embed_model=%s,
             top_k=%s, tau=%s, updated_at=now() WHERE id=%s RETURNING {', '.join(COLUMNS)}""",
             (values["name"], values["pg_host"], values["pg_port"], values["pg_database"], values["pg_user"],
-             values.get("pg_password"), values["ollama_url"], values["generate_model"], values["embed_model"],
+             self._password(values.get("pg_password")), values["ollama_url"], values["generate_model"], values["embed_model"],
              values["top_k"], values["tau"], profile_id),
         )
-        return rows[0] if rows else None
+        return self._out(rows[0]) if rows else None
 
     def delete(self, profile_id: int) -> bool:
         return bool(self.db.fetch_dicts(f"DELETE FROM {TABLE} WHERE id=%s RETURNING id", (profile_id,)))
@@ -67,7 +77,24 @@ class ConnectionRepository:
             f"UPDATE {TABLE} SET is_active=true, updated_at=now() WHERE id=%s RETURNING {', '.join(COLUMNS)}",
             (profile_id,),
         )
-        return rows[0] if rows else None
+        return self._out(rows[0]) if rows else None
 
     def deactivate_all(self) -> None:
         self.db.fetch_dicts(f"UPDATE {TABLE} SET is_active=false, updated_at=now() WHERE is_active RETURNING id")
+
+    def migrate_plaintext_passwords(self) -> int:
+        """기존 평문을 같은 키의 암호문으로 제자리 회전한다. 반복 실행해도 이미 암호화된 행은 건드리지 않는다."""
+        if not self.cipher: return 0
+        rows = self.db.fetch_dicts(f"SELECT id, pg_password FROM {TABLE} WHERE pg_password IS NOT NULL")
+        changed = 0
+        for row in rows:
+            if self.cipher.needs_migration(row.get("pg_password")):
+                self.db.fetch_dicts(
+                    f"UPDATE {TABLE} SET pg_password=%s, updated_at=now() WHERE id=%s RETURNING id",
+                    (self.cipher.encrypt(row["pg_password"]), row["id"]),
+                )
+                changed += 1
+            else:
+                # 기동 때 키를 검증한다. 잘못된 키로 store=true가 된 뒤 첫 요청에서 500이 나면 안 된다.
+                self.cipher.decrypt(row.get("pg_password"))
+        return changed

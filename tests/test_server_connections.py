@@ -8,6 +8,7 @@ import pytest
 from serverconf.domain import ProfileInvalid, from_row, validate
 from serverconf.repository import ConnectionRepository
 from serverconf.service import ConnectionService, ProfileNotFound
+from serverconf.secrets import PREFIX, PasswordCipher, SecretKeyInvalid
 from infra.settings import Settings
 
 BASE = {"name": "운영", "pg_host": "db.local", "pg_database": "companyx", "pg_user": "mcp_reader",
@@ -44,6 +45,27 @@ def test_dsn은_특수문자를_이스케이프한다():
         "postgresql://us%20er:p%40ss%2F1@db.local:5432/companyx"
 
 
+def test_비밀번호_암호문은_평문을_포함하지_않고_복호화된다():
+    from cryptography.fernet import Fernet
+    cipher = PasswordCipher(Fernet.generate_key().decode())
+    stored = cipher.encrypt("s3cret")
+    assert stored.startswith(PREFIX) and "s3cret" not in stored
+    assert cipher.decrypt(stored) == "s3cret"
+
+
+def test_잘못된_키로는_암호문을_복호화할_수_없다():
+    from cryptography.fernet import Fernet
+    encrypted = PasswordCipher(Fernet.generate_key().decode()).encrypt("s3cret")
+    with pytest.raises(SecretKeyInvalid): PasswordCipher(Fernet.generate_key().decode()).decrypt(encrypted)
+
+
+def test_기존_평문은_마이그레이션_전까지_읽을_수_있다():
+    from cryptography.fernet import Fernet
+    cipher = PasswordCipher(Fernet.generate_key().decode())
+    assert cipher.decrypt("legacy-password") == "legacy-password"
+    assert cipher.needs_migration("legacy-password") and not cipher.needs_migration(cipher.encrypt("legacy-password"))
+
+
 # --- 리포지토리 --------------------------------------------------------------
 class RecordingDb:
     def __init__(self, rows=()): self.rows, self.calls = list(rows), []
@@ -67,6 +89,34 @@ def test_활성화는_해제를_먼저_하고_지정을_나중에_한다():
     ConnectionRepository(db).activate(3)
     assert len(db.calls) == 2
     assert "is_active=false" in db.calls[0][0] and "is_active=true" in db.calls[1][0]
+
+
+def test_리포지토리는_새_비밀번호를_암호화해_DB에_보낸다():
+    from cryptography.fernet import Fernet
+    cipher = PasswordCipher(Fernet.generate_key().decode())
+    db = RecordingDb([{**BASE, "id": 3, "pg_port": 5432, "pg_password": cipher.encrypt("s3cret")}])
+    row = ConnectionRepository(db, cipher).create(validate(BASE))
+    stored = db.calls[0][1][5]
+    assert stored.startswith(PREFIX) and "s3cret" not in stored
+    assert row["pg_password"] == "s3cret"
+
+
+def test_기존_평문_마이그레이션은_한_번만_암호화한다():
+    from cryptography.fernet import Fernet
+    cipher = PasswordCipher(Fernet.generate_key().decode())
+    db = RecordingDb([{"id": 3, "pg_password": "legacy"}])
+    assert ConnectionRepository(db, cipher).migrate_plaintext_passwords() == 1
+    sql, params = db.calls[1]
+    assert "UPDATE server_connections" in sql and params[0].startswith(PREFIX)
+    assert "legacy" not in params[0]
+
+
+def test_마이그레이션_검사는_기존_암호문과_키가_맞는지도_확인한다():
+    from cryptography.fernet import Fernet
+    encrypted = PasswordCipher(Fernet.generate_key().decode()).encrypt("secret")
+    db = RecordingDb([{"id": 3, "pg_password": encrypted}])
+    with pytest.raises(SecretKeyInvalid):
+        ConnectionRepository(db, PasswordCipher(Fernet.generate_key().decode())).migrate_plaintext_passwords()
 
 
 # --- 서비스 ------------------------------------------------------------------

@@ -21,6 +21,18 @@ secret() {  # 비밀번호 생성. openssl이 없으면 /dev/urandom으로 떨�
   if command -v openssl >/dev/null 2>&1; then openssl rand -hex 16
   else LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 32; fi
 }
+secret_key() {  # Fernet 키: URL-safe base64로 인코딩한 정확히 32바이트.
+  if command -v openssl >/dev/null 2>&1; then openssl rand -base64 32 | tr '+/' '-_' | tr -d '\n'
+  else head -c 32 /dev/urandom | base64 | tr '+/' '-_' | tr -d '\n'; fi
+}
+
+ensure_profile_key() {
+  if ! grep -q '^PROFILE_ENCRYPTION_KEY=' "$ENV_FILE"; then
+    printf '\n# server_connections.pg_password 저장 암호화 키 (DB와 분리 보관).\nPROFILE_ENCRYPTION_KEY=%s\n' "$(secret_key)" >> "$ENV_FILE"
+    ok "기존 $ENV_FILE에 프로필 암호화 키 추가"
+  fi
+  chmod 600 "$ENV_FILE"
+}
 
 detect_ollama() {  # compose 안에서는 호스트를 이름으로 못 찾는다 — 실제 도달 가능한 주소를 고른다.
   local candidates=("${OLLAMA_URL:-}" "http://localhost:11434" "http://host.docker.internal:11434")
@@ -41,6 +53,7 @@ detect_ollama() {  # compose 안에서는 호스트를 이름으로 못 찾는�
 cmd_env() {
   if [ -f "$ENV_FILE" ]; then
     ok "$ENV_FILE 이미 존재 — 건드리지 않는다"
+    ensure_profile_key
   else
     say "$ENV_FILE 생성 (비밀번호 자동 생성)"
     local url; url="$(detect_ollama || true)"
@@ -60,6 +73,7 @@ POSTGRES_PORT=${POSTGRES_PORT:-5432}
 POSTGRES_PASSWORD=$(secret)
 MCP_READER_PASSWORD=$(secret)
 MCP_CONFIG_PASSWORD=$(secret)
+PROFILE_ENCRYPTION_KEY=$(secret_key)
 
 BUILD_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
 EOF

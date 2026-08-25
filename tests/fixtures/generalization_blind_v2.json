@@ -1,0 +1,20 @@
+[
+  {"id":"GB2-P-01","category":"paraphrase","question":"올해가 2024년이라고 할 때 처음 거래를 시작한 고객사는 모두 몇 군데야?","expected_tools":["nl2sql"],"oracle":{"kind":"contains_number","value":8}},
+  {"id":"GB2-P-02","category":"paraphrase","question":"종료되지 않고 현재 유효한 계약의 총 개수를 알려줘","expected_tools":["nl2sql"],"oracle":{"kind":"contains_number","value":46}},
+  {"id":"GB2-P-03","category":"paraphrase","question":"Product-C2 아키텍처를 다룬 기술 문서를 찾아줄래?","expected_tools":["vector_search"],"oracle":{"kind":"doc_recall","doc_ids":["DOC-012"]}},
+  {"id":"GB2-P-04","category":"paraphrase","question":"Client-D가 도입해서 쓰고 있는 제품 이름을 하나도 빼지 말고 알려줘","expected_tools":["knowledge_graph"],"oracle":{"kind":"contains_values","values":["Product-C1","Product-C2","Product-S3"]}},
+  {"id":"GB2-P-05","category":"paraphrase","question":"Client-I와 진행한 정례 미팅 기록을 찾아서 보여줘","expected_tools":["vector_search"],"oracle":{"kind":"doc_recall","doc_ids":["DOC-029"]}},
+  {"id":"GB2-C-01","category":"colloquial","question":"A 고객이 지금 쓰는 솔루션 목록 좀 뽑아줘","expected_tools":["knowledge_graph"],"oracle":{"kind":"contains_values","values":["Product-C3","Product-S1"]}},
+  {"id":"GB2-C-02","category":"colloquial","question":"심각도 critical인데 해결 안 된 문의가 몇 건이나 남았어?","expected_tools":["nl2sql"],"oracle":{"kind":"contains_number","value":5}},
+  {"id":"GB2-C-03","category":"colloquial","question":"D2 제품 설치 가이드 문서 어디 있어?","expected_tools":["vector_search"],"oracle":{"kind":"doc_recall","doc_ids":["DOC-016"]}},
+  {"id":"GB2-M-01","category":"multi_intent","question":"Client-H를 담당하는 사람과 누적 매출을 각각 확인해줘","expected_tools":["knowledge_graph","nl2sql"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB2-M-02","category":"multi_intent","question":"Product-S2 장애 관련 문서와 이 제품의 사용 고객을 함께 찾아줘","expected_tools":["vector_search","knowledge_graph"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB2-M-03","category":"multi_intent","question":"클라우드사업부 소속 직원 명단과 평균 급여가 둘 다 필요해","expected_tools":["knowledge_graph","nl2sql"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB2-M-04","category":"multi_intent","question":"Client-H 미팅 문서도 찾고 계약이 현재 어떤 상태인지도 알려줘","expected_tools":["vector_search","nl2sql"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB2-U-01","category":"unknown_entity","question":"Client-QQQ의 사용 제품을 조회해줘","expected_tools":["knowledge_graph"],"oracle":{"kind":"status","value":"entity_not_found","requires_candidates":true}},
+  {"id":"GB2-U-02","category":"unknown_entity","question":"Product-X77에서 발생한 이슈와 연결된 고객은 누구야?","expected_tools":["knowledge_graph"],"oracle":{"kind":"status","value":"entity_not_found","requires_candidates":true}},
+  {"id":"GB2-U-03","category":"unknown_entity","question":"가상전략본부의 부서장은 누구인지 알려줘","expected_tools":["knowledge_graph"],"oracle":{"kind":"status","value":"entity_not_found","requires_candidates":true}},
+  {"id":"GB2-O-01","category":"out_of_scope","question":"부산의 이번 주말 미세먼지 예보를 알려줘","expected_tools":[],"oracle":{"kind":"no_route"}},
+  {"id":"GB2-O-02","category":"out_of_scope","question":"내 컴퓨터 바탕화면 파일을 이름순으로 정리해줘","expected_tools":[],"oracle":{"kind":"no_route"}},
+  {"id":"GB2-O-03","category":"out_of_scope","question":"오늘 원달러 환율로 백만 원을 달러로 바꿔 계산해줘","expected_tools":[],"oracle":{"kind":"no_route"}}
+]

@@ -24,6 +24,7 @@ from router.registry import build_registry, build_router
 from serverconf.domain import ProfileInvalid
 from serverconf.repository import ConnectionRepository
 from serverconf.service import ConnectionService, ProfileNotFound
+from serverconf.secrets import PasswordCipher
 
 STATIC = Path(__file__).with_name("static")
 
@@ -60,7 +61,10 @@ def connect(cfg: Settings):
 def build(registry=None, llm=None, store: ConnectionService | None = None, factory=None) -> FastAPI:
     cfg = Settings.from_env()
     if store is None and cfg.CONFIG_PG_DSN:
-        try: store = ConnectionService(ConnectionRepository(PostgresDb(cfg.CONFIG_PG_DSN)))
+        try:
+            repo = ConnectionRepository(PostgresDb(cfg.CONFIG_PG_DSN), PasswordCipher(cfg.PROFILE_ENCRYPTION_KEY))
+            repo.migrate_plaintext_passwords()
+            store = ConnectionService(repo)
         except Exception: store = None  # 프로필 저장소가 없어도 질의 화면은 떠야 한다.
 
     if factory is None and registry is not None:
