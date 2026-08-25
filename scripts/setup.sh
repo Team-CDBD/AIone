@@ -59,6 +59,7 @@ POSTGRES_USER=postgres
 POSTGRES_PORT=${POSTGRES_PORT:-5432}
 POSTGRES_PASSWORD=$(secret)
 MCP_READER_PASSWORD=$(secret)
+MCP_CONFIG_PASSWORD=$(secret)
 
 BUILD_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)
 EOF
@@ -107,8 +108,13 @@ cmd_models() {
 cmd_up()     { say "컨테이너 기동"; docker compose up -d --build; ok "기동 완료"; }
 cmd_ingest() {
   [ -f "$DATASET" ] || die "데이터셋 없음: $DATASET"
+  # mcp 서비스의 PG_DSN은 read-only인 mcp_reader다(sql/05-roles.sh가 default_transaction_read_only를 건다).
+  # 적재는 쓰기가 필요하므로 이 단계에서만 소유자 계정 DSN을 덮어써서 넘긴다.
+  # shellcheck disable=SC1090
+  set -a && . "./$ENV_FILE" && set +a
+  local dsn="postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-companyx}"
   say "데이터셋 적재 (임베딩 포함 — 수 분 걸린다)"
-  docker compose run --rm mcp python -m ingest "$DATASET"
+  docker compose run --rm -e PG_DSN="$dsn" mcp python -m ingest "$DATASET"
   ok "적재 완료"
 }
 cmd_verify() {
