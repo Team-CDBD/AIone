@@ -3,6 +3,7 @@
 /logs/
 /data/
 /addProject/
+CLAUDE.md
 
 # Python build artifacts
 __pycache__/
