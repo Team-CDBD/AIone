@@ -29,6 +29,12 @@ def test_용어가_없는_질문은_무조건_통과():
 def test_고객사_count는_name_join을_요구하지_않음():
     assert check("2024년에 등록된 고객사는 몇 개야?", "SELECT COUNT(id) FROM clients").ok
 
+
+def test_처음_거래한_고객은_registered_at을_요구한다():
+    question = "2024년에 처음 거래를 시작한 고객사는 몇 곳이야?"
+    assert not check(question, "SELECT COUNT(DISTINCT client_id) FROM sales").ok
+    assert check(question, "SELECT COUNT(*) FROM clients WHERE registered_at >= DATE '2024-01-01'").ok
+
 # --- 부정 오라클: 규칙별로 하나씩 ---
 
 def test_매출_질문에_계약금액_컬럼_쓰면_거부():
@@ -78,6 +84,14 @@ def test_service_semantic_rejection_exhausts_retry_and_reports_reason():
     outcome = SqlService(SqlRepository(db), llm).answer("2024년 1분기 매출액은 얼마야?", [], 100)
     assert outcome.status == ToolStatus.GUARD_REJECTED
     assert "매출" in (outcome.reason or "")
+
+
+def test_신규_고객을_sales로_추정하면_clients_registered_at으로_재시도한다():
+    llm = FakeLlm(["SELECT COUNT(DISTINCT client_id) FROM sales",
+                   "SELECT COUNT(*) FROM clients WHERE registered_at >= DATE '2024-01-01' AND registered_at < DATE '2025-01-01'"])
+    outcome = SqlService(SqlRepository(FakeDb([{"count": 8}])), llm).answer(
+        "2024년에 처음 거래를 시작한 고객사는 몇 곳이야?", [], 100)
+    assert outcome.status == ToolStatus.OK and "registered_at" in outcome.sql
 
 # --- evaluate_nl2sql_extended.rows_match: 순수 채점 함수 단위 테스트 ---
 

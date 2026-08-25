@@ -67,6 +67,11 @@ def test_한글로_적은_식별자를_해소한다(resolver):
     assert [item.name for item in resolved] == ["Client-A"]
 
 
+def test_알파벳_고객_축약을_식별자로_해소한다(resolver):
+    resolved = [item for item in resolver.find_all("A 고객이 지금 쓰는 솔루션 목록") if item.node_id]
+    assert [item.name for item in resolved] == ["Client-A"]
+
+
 def test_오탈자가_있는_한글_이름을_해소한다(resolver):
     """GH-T-04. '데이터플렛폼팀'(랫→렛)이 entity_not_found였다."""
     resolved = [item for item in resolver.find_all("데이터플렛폼팀 사람들 누구임?") if item.node_id]
@@ -92,6 +97,26 @@ def test_모듈이_주제를_신고하면_범위_안이다():
     """라우터가 특정 주제를 아는 게 아니라, 등록된 모듈이 무엇을 다루는지가 판정을 바꾼다."""
     assert out_of_scope("내일 서울 날씨 알려줘") is not None
     assert out_of_scope("내일 서울 날씨 알려줘", claimed=("날씨",)) is None
+
+
+def test_개인_PC_파일_조작은_범위_밖이다():
+    assert out_of_scope("내 컴퓨터 바탕화면 파일을 이름순으로 정리해줘") is not None
+
+
+@pytest.mark.parametrize("question", [
+    "Client-H를 담당하는 사람과 누적 매출을 각각 확인해줘",
+    "Product-S2 장애 관련 문서와 이 제품의 사용 고객을 함께 찾아줘",
+    "클라우드사업부 소속 직원 명단과 평균 급여가 둘 다 필요해",
+])
+def test_복합_요청_표현을_감지한다(question):
+    from router.stages import COMPOUND
+    assert COMPOUND.search(question), question
+
+
+def test_신규_고객_정의가_registered_at으로_고정된다():
+    from nl2sql.domain.prompt import build_prompt
+    prompt = build_prompt("2024년에 처음 거래를 시작한 고객은 몇 곳?", ["clients"])
+    assert "clients.registered_at" in prompt and "sales나 contracts" in prompt
 
 
 def test_이름이_겹치는_키워드는_한_번만_센다():

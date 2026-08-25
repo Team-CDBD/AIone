@@ -45,6 +45,17 @@ def test_quarter_and_document_intent_grounding():
     assert build_params("API 설치 가이드", [])["doc_type"] == "technical_doc"
 
 
+def test_solution_is_a_product_use_relation():
+    entity = Resolution("client_1", "Client-A", "client", 1.0, "exact")
+    params = build_kg_params("A 고객이 쓰는 솔루션 목록", [entity])
+    assert params["relations"] == ["USES"] and params["target_types"] == ["product"]
+
+
+def test_department_head_wording_builds_head_relation():
+    params = build_kg_params("가상전략본부의 부서장은 누구야?", [])
+    assert params["relations"] == ["HEAD_IS"] and params["target_types"] == ["employee"]
+
+
 def test_product_project_question_builds_two_hop_plan():
     entity = Resolution("product_5", "Product-D1", "product", 1.0, "exact")
     params = build_kg_params("Product-D1 제품과 관련된 프로젝트는?", [entity])
@@ -91,6 +102,8 @@ def test_entity_question_still_uses_traversal_scope():
     # 문서 질문이 KG로 끌려가면 안 된다 — "이슈"는 KG 단독 신호가 아니다.
     ("고객사 미팅에서 논의된 일정 지연 이슈는?", "vector_search"),
     ("서버 장애 사례와 원인이 궁금해", "vector_search"),
+    ("심각도 critical인데 해결 안 된 문의가 몇 건이나 남았어?", "nl2sql"),
+    ("가상전략본부의 부서장은 누구인지 알려줘", "knowledge_graph"),
 ])
 def test_paraphrased_questions_route_like_the_official_wording(question, expected):
     has_entity = bool(KgEntityResolver.ENTITY_PATTERN.search(question))

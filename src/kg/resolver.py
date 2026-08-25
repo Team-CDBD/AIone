@@ -17,6 +17,8 @@ def transliterate_ids(text: str) -> str:
     for spellings, latin in _TRANSLITERATIONS:
         for spelling in spellings:
             text = re.sub(rf"{spelling}\s*-?\s*([A-Za-z0-9]+)", rf"{latin}-\1", text)
+    # 현업 구어체의 "A 고객"은 데이터셋 식별자 Client-A의 흔한 축약이다.
+    text = re.sub(r"(?<![A-Za-z0-9])([A-Z])\s*고객(?:사)?", r"Client-\1", text)
     return text
 class KgEntityResolver:
     TRGM_THRESHOLD = 0.45

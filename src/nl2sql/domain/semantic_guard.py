@@ -42,6 +42,12 @@ def check(question: str, sql: str) -> SemanticGuardResult:
     if re.search(r"\bquarter\s*=\s*'\d{4}-q(?:\*|)'", sql, re.IGNORECASE):
         return SemanticGuardResult(False, "의미 오류: 연도 전체를 불완전한 quarter 값으로 필터링할 수 없습니다. 날짜 범위를 사용하세요.")
     ctx = _SqlContext(sql)
+    new_client = (any(term in question for term in ("신규 고객", "처음 거래", "새로 들어온 거래처", "새 고객"))
+                  and any(term in question for term in ("고객", "고객사", "거래처")))
+    if new_client and not ctx.uses_column("clients.registered_at"):
+        return SemanticGuardResult(
+            False, "의미 오류: 신규 고객/처음 거래 시작은 clients.registered_at 기준입니다. "
+                   "clients만 조회하고 registered_at 날짜 범위를 사용하세요.")
     if ("고객사" in question and not any(term in question for term in ("몇 개", "개수", "수는"))
             and any(term in question for term in ("알려", "어디", "가장"))
             and not ctx.uses_column("clients.name")):

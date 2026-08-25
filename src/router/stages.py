@@ -11,7 +11,10 @@ from .resolvers import CompositeResolver
 
 AMBIGUOUS_PROFILE = "fallback_ambiguous"
 # 한 문장이 두 가지를 동시에 요구하는 표지. 강한 신호 하나로 단정하면 나머지 절의 답을 잃는다.
-COMPOUND = re.compile(r"(?:그리고|및|,)\s*\S+|(?:도|와|과)\s*(?:함께|같이)|(?:하고|찾고|보고)\s")
+COMPOUND = re.compile(
+    r"(?:그리고|및|,)\s*\S+|(?:하고|찾고|보고)\s"
+    r"|(?:와|과|도).{0,32}(?:함께|같이|각각|둘\s*다|동시에|도\s*(?:알려|확인|필요|찾))"
+)
 
 
 @dataclass(frozen=True)

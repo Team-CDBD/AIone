@@ -14,8 +14,8 @@ from .service import GraphService
 SIGNAL = SignalSpec(
     tool=ToolName.KNOWLEDGE_GRAPH,
     weight=3.5,
-    keywords=("담당","소속","사용 중인","사용하는","쓰는","쓰고","연결된","연결","이끄는","이끄","리더","팀장","누구야","관련된",
-              "상품","프로덕트","서로 다른","고유","신고한","제품별","구성원","멤버","인원",
+    keywords=("담당","소속","사용 중인","사용하는","쓰는","쓰고","연결된","연결","이끄는","이끄","리더","팀장","부서장","누구야","관련된",
+              "상품","프로덕트","솔루션","서로 다른","고유","신고한","제품별","구성원","멤버","인원","본부",
               # "이슈" 단독은 넣지 않는다 — '미팅에서 논의된 일정 지연 이슈'처럼 문서 질문을 가로챈다.
               "기술 지원 이슈","지원 이슈","장애 신고","접수된","접수","신고된","진행 중","최다","제일 많"),
     entity_when="present",
@@ -23,7 +23,7 @@ SIGNAL = SignalSpec(
 )
 GUIDELINE = "그래프 경로의 방향과 단위를 명시하세요."
 # 질문 키워드 → 온톨로지 관계. 라우터가 아니라 kg 모듈이 소유한다.
-RELATION_BY_KEYWORD = {"소속":"BELONGS_TO","사람":"BELONGS_TO","구성원":"BELONGS_TO","멤버":"BELONGS_TO","인원":"BELONGS_TO","팀장":"HEAD_IS","사용":"USES","쓰는":"USES","쓰고":"USES","연결":"USES","담당":"MANAGES_ACCOUNT","프로젝트":"HAS_PROJECT","이끄":"LEADS","리더":"LEADS","이슈":"REPORTED_ISSUE","장애 신고":"REPORTED_ISSUE","신고":"REPORTED_ISSUE","접수":"REPORTED_ISSUE"}
+RELATION_BY_KEYWORD = {"소속":"BELONGS_TO","사람":"BELONGS_TO","구성원":"BELONGS_TO","멤버":"BELONGS_TO","인원":"BELONGS_TO","팀장":"HEAD_IS","부서장":"HEAD_IS","사용":"USES","쓰는":"USES","쓰고":"USES","솔루션":"USES","연결":"USES","담당":"MANAGES_ACCOUNT","프로젝트":"HAS_PROJECT","이끄":"LEADS","리더":"LEADS","이슈":"REPORTED_ISSUE","장애 신고":"REPORTED_ISSUE","신고":"REPORTED_ISSUE","접수":"REPORTED_ISSUE"}
 DEFAULT_RELATIONS = ["USES", "HAS_PROJECT"]
 MAX_HOPS = 2
 # 시작 개체 없이 관계 전체를 훑어야 하는 질문의 표지.
@@ -33,8 +33,8 @@ AGGREGATE_TRIGGERS = ("가장 많", "가장 적", "최다", "제일 많", "최�
 # 이웃 노드 property 필터. 값은 데이터셋 enum 그대로다.
 NEIGHBOR_FILTERS = {"진행 중": ("status", "in_progress"), "완료된": ("status", "completed"),
                     "보류": ("status", "on_hold"), "계획 중": ("status", "planning")}
-TYPE_KEYWORDS = (("project", ("프로젝트",)), ("client", ("고객사", "고객")), ("product", ("제품", "상품", "프로덕트")),
-                 ("employee", ("직원", "팀장", "엔지니어", "담당자", "리더", "사람")), ("department", ("부서",)))
+TYPE_KEYWORDS = (("project", ("프로젝트",)), ("client", ("고객사", "고객")), ("product", ("제품", "상품", "프로덕트", "솔루션")),
+                 ("employee", ("직원", "팀장", "부서장", "엔지니어", "담당자", "리더", "사람")), ("department", ("부서", "본부")))
 
 
 def _compact(text: str) -> str:
@@ -92,11 +92,10 @@ def build_params(question: str, entities: Sequence[Resolution]) -> dict[str, Any
         if params is not None: return params
     start = named or question
     if "Product-" in question and "프로젝트" in question: relations = ["USES", "HAS_PROJECT"]
-    if "프로젝트" in question: targets = ["project"]
-    elif "고객사" in question or "고객" in question: targets = ["client"]
-    elif "제품" in question or "상품" in question or "프로덕트" in question: targets = ["product"]
-    elif any(word in question for word in ("직원","팀장","엔지니어","사람","구성원","멤버","인원")): targets = ["employee"]
-    else: targets = []
+    # 시작 개체와 답 유형이 함께 언급되므로 마지막 명사를 답 유형으로 본다.
+    # "A 고객이 쓰는 솔루션"을 앞의 고객 때문에 client로 되돌리면 안 된다.
+    target = _last_mentioned_type(question)
+    targets = [target] if target else []
     hops = 2 if len(relations) > 1 else 1
     return {"start_entity": start, "relations": relations, "target_types": targets, "max_hops": hops}
 

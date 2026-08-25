@@ -1,0 +1,20 @@
+[
+  {"id":"GB3-P-01","category":"paraphrase","question":"2024년에 고객 명부에 새로 등록된 업체는 총 몇 곳이야?","expected_tools":["nl2sql"],"oracle":{"kind":"contains_number","value":8}},
+  {"id":"GB3-P-02","category":"paraphrase","question":"계약 상태가 active인 레코드 수를 계산해줘","expected_tools":["nl2sql"],"oracle":{"kind":"contains_number","value":46}},
+  {"id":"GB3-P-03","category":"paraphrase","question":"C2의 설계 구조를 설명하는 기술 자료를 검색해줘","expected_tools":["vector_search"],"oracle":{"kind":"doc_recall","doc_ids":["DOC-012"]}},
+  {"id":"GB3-P-04","category":"paraphrase","question":"Client-D에 공급된 솔루션 전체를 나열해줘","expected_tools":["knowledge_graph"],"oracle":{"kind":"contains_values","values":["Product-C1","Product-C2","Product-S3"]}},
+  {"id":"GB3-P-05","category":"paraphrase","question":"Client-I 정기 협의 기록이 들어 있는 자료를 검색해줘","expected_tools":["vector_search"],"oracle":{"kind":"doc_recall","doc_ids":["DOC-029"]}},
+  {"id":"GB3-C-01","category":"colloquial","question":"고객 A가 이용하는 상품이 뭐야?","expected_tools":["knowledge_graph"],"oracle":{"kind":"contains_values","values":["Product-C3","Product-S1"]}},
+  {"id":"GB3-C-02","category":"colloquial","question":"priority critical인 미처리 티켓 수 좀 세줘","expected_tools":["nl2sql"],"oracle":{"kind":"contains_number","value":5}},
+  {"id":"GB3-C-03","category":"colloquial","question":"D2 셋업 설명서 좀 찾아줘","expected_tools":["vector_search"],"oracle":{"kind":"doc_recall","doc_ids":["DOC-016"]}},
+  {"id":"GB3-M-01","category":"multi_intent","question":"Client-H 담당자를 확인하고 누적 매출 합계도 계산해줘","expected_tools":["knowledge_graph","nl2sql"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB3-M-02","category":"multi_intent","question":"Product-S2 장애 리포트를 찾은 다음 이용 고객사까지 보여줘","expected_tools":["vector_search","knowledge_graph"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB3-M-03","category":"multi_intent","question":"클라우드사업부 직원 목록뿐 아니라 평균 연봉도 필요해","expected_tools":["knowledge_graph","nl2sql"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB3-M-04","category":"multi_intent","question":"Client-H 회의록과 계약 현황 두 가지를 조회해줘","expected_tools":["vector_search","nl2sql"],"oracle":{"kind":"route_coverage"}},
+  {"id":"GB3-U-01","category":"unknown_entity","question":"Client-WWW가 이용하는 제품은 무엇이야?","expected_tools":["knowledge_graph"],"oracle":{"kind":"status","value":"entity_not_found","requires_candidates":true}},
+  {"id":"GB3-U-02","category":"unknown_entity","question":"Product-Z88의 장애 신고 고객을 찾아줘","expected_tools":["knowledge_graph"],"oracle":{"kind":"status","value":"entity_not_found","requires_candidates":true}},
+  {"id":"GB3-U-03","category":"unknown_entity","question":"미래혁신본부를 책임지는 부서장을 알려줘","expected_tools":["knowledge_graph"],"oracle":{"kind":"status","value":"entity_not_found","requires_candidates":true}},
+  {"id":"GB3-O-01","category":"out_of_scope","question":"다음 주 제주도 최고 기온을 알려줘","expected_tools":[],"oracle":{"kind":"no_route"}},
+  {"id":"GB3-O-02","category":"out_of_scope","question":"내 PC 다운로드 폴더의 파일을 날짜별로 정리해줘","expected_tools":[],"oracle":{"kind":"no_route"}},
+  {"id":"GB3-O-03","category":"out_of_scope","question":"오늘 코스피 마감 지수를 조회해줘","expected_tools":[],"oracle":{"kind":"no_route"}}
+]
