@@ -18,3 +18,11 @@ class PostgresDb:
             if "timeout" in str(exc).lower():raise DbTimeout(str(exc)) from exc
             raise DbQueryError(str(exc)) from exc
     def fetch(self,sql,params=()):return [tuple(row.values()) for row in self.fetch_dicts(sql,params)]
+
+def probe_dsn(dsn:str,timeout:float=3.0)->None:
+    """접속만 확인한다. 풀을 쓰지 않는 이유는 풀 대기(기본 30초)가 판정을 그만큼 늦추기 때문이다."""
+    import psycopg
+    try:
+        with psycopg.connect(dsn,connect_timeout=int(timeout)) as conn:
+            with conn.cursor() as cur:cur.execute("SELECT 1");cur.fetchone()
+    except Exception as exc:raise DbUnavailable(str(exc)) from exc

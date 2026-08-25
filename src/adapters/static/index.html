@@ -68,6 +68,7 @@
   <div class="tabs" role="tablist">
     <button role="tab" aria-selected="true" data-tab="ask">자연어 질의</button>
     <button role="tab" aria-selected="false" data-tab="console">도구 콘솔</button>
+    <button role="tab" aria-selected="false" data-tab="conn">서버 연결</button>
   </div>
 
   <!-- 자연어 질의 -->
@@ -98,6 +99,56 @@
     </div>
     <div id="callOut"></div>
   </section>
+
+  <!-- 서버 연결 -->
+  <section id="tab-conn" hidden>
+    <div class="card">
+      <div class="meta">
+        <span class="pill note" id="connNow">확인 중…</span>
+        <span class="muted">활성 프로필이 있으면 환경변수 설정보다 우선하고, 재기동 후에도 유지됩니다.</span>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>이름</th><th>PostgreSQL</th><th>Ollama</th><th>모델</th><th>TOP_K/TAU</th><th></th></tr></thead>
+          <tbody id="connRows"></tbody>
+        </table>
+      </div>
+      <div class="row"><button class="go" id="newBtn">새 프로필</button>
+        <button class="go" id="envBtn" style="background:var(--muted)">환경변수 설정으로 되돌리기</button></div>
+    </div>
+
+    <div class="card" id="connForm" hidden>
+      <h3 id="formTitle">새 프로필</h3>
+      <div class="row">
+        <div><label for="f_name">이름</label><input id="f_name" placeholder="운영 VM"></div>
+      </div>
+      <div class="row">
+        <div><label for="f_host">PG 호스트</label><input id="f_host" placeholder="postgres"></div>
+        <div style="flex:0 1 110px"><label for="f_port">포트</label><input id="f_port" type="number" value="5432"></div>
+        <div><label for="f_db">데이터베이스</label><input id="f_db" value="companyx"></div>
+      </div>
+      <div class="row">
+        <div><label for="f_user">사용자</label><input id="f_user" value="mcp_reader"></div>
+        <div><label for="f_pw">비밀번호</label><input id="f_pw" type="password" placeholder="변경할 때만 입력"></div>
+      </div>
+      <div class="row">
+        <div><label for="f_ollama">Ollama 주소</label><input id="f_ollama" placeholder="비우면 환경변수 값 사용"></div>
+      </div>
+      <div class="row">
+        <div><label for="f_gen">생성 모델</label><input id="f_gen" value="gemma4:e4b"></div>
+        <div><label for="f_emb">임베딩 모델</label><input id="f_emb" value="nomic-embed-text:latest"></div>
+        <div style="flex:0 1 100px"><label for="f_topk">TOP_K</label><input id="f_topk" type="number" value="5"></div>
+        <div style="flex:0 1 100px"><label for="f_tau">TAU</label><input id="f_tau" type="number" step="0.01" value="0.55"></div>
+      </div>
+      <div class="row">
+        <button class="go" id="saveBtn">저장</button>
+        <button class="go" id="testBtn" style="background:var(--muted)">연결 테스트</button>
+        <button class="go" id="cancelBtn" style="background:var(--muted)">취소</button>
+      </div>
+      <div id="formMsg"></div>
+    </div>
+    <div id="connOut"></div>
+  </section>
 </main>
 
 <script>
@@ -113,17 +164,21 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
   $('#tab-ask').hidden = b.dataset.tab !== 'ask';
   $('#tab-console').hidden = b.dataset.tab !== 'console';
+  $('#tab-conn').hidden = b.dataset.tab !== 'conn';
+  if (b.dataset.tab === 'conn') loadConnections();
 });
 
 // --- 상태 ---
-fetch('/api/health').then(r => r.json()).then(h => {
+function loadHealth() { return fetch('/api/health').then(r => r.json()).then(h => {
   const box = $('#status'); box.textContent = '';
   Object.entries(h.modules).forEach(([name, up]) => {
     const s = el('span'); const d = el('span', 'dot'); d.style.background = up ? '#3ac07f' : '#e06a6a';
     s.append(d, document.createTextNode(name)); box.append(s);
   });
   box.append(el('span', null, `${h.generate_model} · TOP_K ${h.top_k} · TAU ${h.tau}`));
-}).catch(e => $('#status').textContent = '상태 조회 실패: ' + e.message);
+  if (h.connection) box.append(el('span', null, '연결: ' + h.connection.source));
+}).catch(e => $('#status').textContent = '상태 조회 실패: ' + e.message); }
+loadHealth();
 
 // --- 샘플 칩 ---
 SAMPLES.forEach(s => { const b = el('button', null, s); b.onclick = () => { $('#q').value = s; ask(); }; $('#samples').append(b); });
@@ -243,6 +298,140 @@ $('#callBtn').onclick = async () => {
     card.append(raw);
     box.append(card);
   } catch (e) { showError(box, e); } finally { btn.disabled = false; }
+};
+
+// --- 서버 연결 ---
+const F = {name:'#f_name', pg_host:'#f_host', pg_port:'#f_port', pg_database:'#f_db', pg_user:'#f_user',
+           pg_password:'#f_pw', ollama_url:'#f_ollama', generate_model:'#f_gen', embed_model:'#f_emb',
+           top_k:'#f_topk', tau:'#f_tau'};
+let EDITING = null;   // null이면 새 프로필, 숫자면 그 id를 수정 중
+
+function formValues() {
+  const out = {};
+  for (const [key, sel] of Object.entries(F)) out[key] = $(sel).value.trim();
+  return out;
+}
+function fillForm(p) {
+  for (const [key, sel] of Object.entries(F)) $(sel).value = p && p[key] != null ? p[key] : '';
+  $('#f_pw').value = '';
+  $('#f_pw').placeholder = p && p.has_password ? '저장된 값 유지 — 바꿀 때만 입력' : '비밀번호';
+}
+function openForm(p) {
+  EDITING = p ? p.id : null;
+  $('#formTitle').textContent = p ? `프로필 수정 · ${p.name}` : '새 프로필';
+  fillForm(p || {pg_port: 5432, pg_database: 'companyx', pg_user: 'mcp_reader',
+                 generate_model: 'gemma4:e4b', embed_model: 'nomic-embed-text:latest', top_k: 5, tau: 0.55});
+  $('#formMsg').innerHTML = '';
+  $('#connForm').hidden = false;
+  $('#f_name').focus();
+}
+$('#newBtn').onclick = () => openForm(null);
+$('#cancelBtn').onclick = () => { $('#connForm').hidden = true; EDITING = null; };
+
+async function api(path, options) {
+  const r = await fetch(path, options);
+  const text = await r.text();
+  let body = null; try { body = text ? JSON.parse(text) : null; } catch (e) { body = {detail: text}; }
+  if (!r.ok) throw new Error((body && body.detail) || ('HTTP ' + r.status));
+  return body;
+}
+
+async function loadConnections() {
+  const rows = $('#connRows'); rows.innerHTML = '';
+  try {
+    const d = await api('/api/connections');
+    $('#connNow').textContent = '현재 연결: ' + d.current.source;
+    if (!d.profiles.length) {
+      const tr = el('tr'), td = el('td', 'muted', '저장된 프로필이 없습니다. [새 프로필]로 추가하세요.');
+      td.colSpan = 6; tr.append(td); rows.append(tr); return;
+    }
+    d.profiles.forEach(p => {
+      const tr = el('tr');
+      const nameCell = el('td');
+      nameCell.append(document.createTextNode(p.name + ' '));
+      if (p.is_active) nameCell.append(el('span', 'pill ok', '연결됨'));
+      if (!p.has_password) nameCell.append(el('span', 'pill warn', '비밀번호 없음'));
+      tr.append(nameCell);
+      tr.append(el('td', null, `${p.pg_user}@${p.pg_host}:${p.pg_port}/${p.pg_database}`));
+      tr.append(el('td', null, p.ollama_url || '(환경변수)'));
+      tr.append(el('td', null, `${p.generate_model} / ${p.embed_model}`));
+      tr.append(el('td', null, `${p.top_k} / ${p.tau}`));
+      const act = el('td'), mk = (label, fn) => { const b = el('button', null, label); b.onclick = fn; return b; };
+      const chips = el('div', 'chips');
+      chips.append(mk(p.is_active ? '재연결' : '연결', () => activate(p)),
+                   mk('테스트', () => testSaved(p)), mk('수정', () => openForm(p)), mk('삭제', () => remove(p)));
+      act.append(chips); tr.append(act);
+      rows.append(tr);
+    });
+  } catch (e) {
+    $('#connNow').textContent = '프로필 조회 실패';
+    const tr = el('tr'), td = el('td', 'muted', e.message); td.colSpan = 6; tr.append(td); rows.append(tr);
+  }
+}
+
+function connMsg(box, text, cls) {
+  box.innerHTML = ''; const c = el('div', 'card' + (cls === 'bad' ? ' err' : ''));
+  c.append(el('span', 'pill ' + (cls || 'note'), cls === 'bad' ? '실패' : '완료'), el('p', 'muted', text));
+  box.append(c);
+}
+
+function probeText(d) {
+  return Object.entries(d.checks).map(([name, c]) =>
+    `${name}: ${c.ok === null ? '건너뜀' : c.ok ? '정상' : '실패'} — ${c.detail}`).join('\n');
+}
+
+$('#saveBtn').onclick = async () => {
+  const btn = $('#saveBtn'); btn.disabled = true;
+  try {
+    const body = JSON.stringify(formValues());
+    const opts = {headers: {'Content-Type': 'application/json'}, body};
+    if (EDITING == null) await api('/api/connections', {method: 'POST', ...opts});
+    else await api('/api/connections/' + EDITING, {method: 'PUT', ...opts});
+    $('#connForm').hidden = true; EDITING = null;
+    await loadConnections();
+    connMsg($('#connOut'), '프로필을 저장했습니다.', 'ok');
+  } catch (e) { connMsg($('#formMsg'), e.message, 'bad'); } finally { btn.disabled = false; }
+};
+
+$('#testBtn').onclick = async () => {
+  const btn = $('#testBtn'); btn.disabled = true;
+  try {
+    const d = await api('/api/connections/test', {method: 'POST', headers: {'Content-Type': 'application/json'},
+                                                  body: JSON.stringify(formValues())});
+    connMsg($('#formMsg'), probeText(d), d.ok ? 'ok' : 'bad');
+  } catch (e) { connMsg($('#formMsg'), e.message, 'bad'); } finally { btn.disabled = false; }
+};
+
+async function testSaved(p) {
+  try {
+    const d = await api('/api/connections/' + p.id + '/test', {method: 'POST'});
+    connMsg($('#connOut'), `${p.name}\n` + probeText(d), d.ok ? 'ok' : 'bad');
+  } catch (e) { connMsg($('#connOut'), e.message, 'bad'); }
+}
+
+async function activate(p) {
+  try {
+    const d = await api('/api/connections/' + p.id + '/activate', {method: 'POST'});
+    connMsg($('#connOut'), `${p.name}에 연결했습니다.\n` + probeText(d.probe), 'ok');
+    await loadConnections(); await loadHealth();
+  } catch (e) { connMsg($('#connOut'), e.message, 'bad'); }
+}
+
+async function remove(p) {
+  if (!confirm(`프로필 '${p.name}'을(를) 삭제할까요?`)) return;
+  try {
+    await api('/api/connections/' + p.id, {method: 'DELETE'});
+    await loadConnections();
+    connMsg($('#connOut'), '삭제했습니다.', 'ok');
+  } catch (e) { connMsg($('#connOut'), e.message, 'bad'); }
+}
+
+$('#envBtn').onclick = async () => {
+  try {
+    const d = await api('/api/connections/deactivate', {method: 'POST'});
+    connMsg($('#connOut'), '환경변수 설정으로 되돌렸습니다. 현재 연결: ' + d.source, 'ok');
+    await loadConnections(); await loadHealth();
+  } catch (e) { connMsg($('#connOut'), e.message, 'bad'); }
 };
 </script>
 </body>

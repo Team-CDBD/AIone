@@ -7,6 +7,7 @@ services:
       # 비밀번호에는 기본값을 두지 않는다 — 기본값이 있으면 아무도 바꾸지 않고 그대로 배포된다.
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env — scripts/setup.sh가 만들어 준다}"
       MCP_READER_PASSWORD: "${MCP_READER_PASSWORD:?set MCP_READER_PASSWORD in .env — scripts/setup.sh가 만들어 준다}"
+      MCP_CONFIG_PASSWORD: "${MCP_CONFIG_PASSWORD:?set MCP_CONFIG_PASSWORD in .env — scripts/setup.sh가 만들어 준다}"
     ports: ["${POSTGRES_PORT:-5432}:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -52,6 +53,9 @@ services:
       TAU: ${TAU:-0.55}
       KG_ENGINE: python
       WEB_PORT: ${WEB_PORT:-8080}
+      # 접속 프로필 저장소. mcp_config는 server_connections 한 테이블에만 권한이 있다(sql/06).
+      # stdio(mcp) 서비스에는 주지 않는다 — 서버를 바꿔 붙이는 것은 화면의 기능이다.
+      CONFIG_PG_DSN: "postgresql://mcp_config:${MCP_CONFIG_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-companyx}"
     ports: ["${WEB_PORT:-8080}:8080"]
     depends_on:
       postgres: {condition: service_healthy}
