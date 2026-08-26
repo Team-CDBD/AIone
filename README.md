@@ -1,4 +1,4 @@
-# MCP CompanyX
+# AIone
 
 시스템 설계서의 네 모듈을 계약 우선·레이어드 아키텍처로 구현한 Python 프로젝트입니다.
 
@@ -62,3 +62,9 @@ pytest
 docker compose run --rm mcp python tools/evaluate_generalization.py \
   --out /tmp/generalization.json
 ```
+
+## 라이선스
+
+이 저장소에서 직접 작성한 코드는 **Apache License 2.0**을 따릅니다 — 전문은 루트의
+[`LICENSE`](LICENSE)에 있습니다. 편입한 제3자 자산의 출처와 라이선스는
+[`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES)에 따로 기재합니다.

@@ -79,7 +79,7 @@ def build(registry=None, llm=None, store: ConnectionService | None = None, facto
                 runtime.rebind(store.settings_for(active.id, cfg), f"프로필 · {active.name}", active.id)
         except Exception: pass
 
-    app = FastAPI(title="CompanyX MCP", version="0.2.0")
+    app = FastAPI(title="AIone", version="0.2.0")
 
     def need_store() -> ConnectionService:
         if store is None: raise HTTPException(503, "접속 프로필 저장소가 설정되지 않았습니다 (CONFIG_PG_DSN)")
